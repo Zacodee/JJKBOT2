@@ -180,12 +180,12 @@ def _read_database_sync() -> dict[str, Any]:
             database = json.load(handle)
     except json.JSONDecodeError as error:
         raise RuntimeError(
-            "Le fichier data/profiles.json contient du JSON invalide. "
+            f"Le fichier {path} contient du JSON invalide. "
             "Corrige-le ou renomme-le pour repartir d’une base vide."
         ) from error
 
     if not isinstance(database, dict) or not isinstance(database.get("profiles"), dict):
-        logger.warning("data/profiles.json n’a pas la structure attendue, il est réinitialisé.")
+        logger.warning("%s n’a pas la structure attendue, il est réinitialisé.", path)
         return {"version": DATABASE_VERSION, "profiles": {}}
 
     database.setdefault("version", DATABASE_VERSION)

@@ -38,7 +38,7 @@ python main.py            # démarre le bot
 | Variable | Rôle |
 |---|---|
 | `DISCORD_TOKEN` | Token privé du bot (obligatoire) |
-| `CLIENT_ID` | Identifiant de l’application Discord (obligatoire) |
+| `CLIENT_ID` | Identifiant de l’application Discord (facultatif, non utilisé au démarrage) |
 | `GUILD_ID` | Serveur de test : les commandes y apparaissent immédiatement |
 | `THEME` | `violet` (défaut) ou `noblesse` |
 | `BANNER_URL` | Bannière décorative affichée en haut de chaque réponse |
@@ -139,6 +139,7 @@ jjkbot/
   views/                      embeds et vues interactives (profil, compétences)
   cogs/                       commandes /profil, /competences et /jjk
 tests/                        tests unitaires (bibliothèque standard uniquement)
+tools/preview.py              aperçu local des embeds (tools/preview.html)
 ```
 
 ## Déploiement (hébergeur type Eternodes)
@@ -183,8 +184,25 @@ La synchronisation des commandes se fait toute seule à chaque démarrage.
 
 Les variables d’environnement (`DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `THEME`, `BANNER_URL`…) se
 renseignent dans le panneau de l’hébergeur. Créer un fichier `.env` à la main fonctionne aussi :
-le bot lit les deux. Ne mets `GUILD_ID` que pendant les tests — laisse-le vide en production pour
-enregistrer les commandes globalement.
+le bot lit les deux, et une variable du panneau a toujours la priorité sur le fichier. Ne mets
+`GUILD_ID` que pendant les tests — laisse-le vide en production pour enregistrer les commandes
+globalement.
+
+#### Wispbyte (hébergeur Pterodactyl)
+
+Le crash `La variable d’environnement DISCORD_TOKEN est manquante` signifie simplement que le
+process n’a reçu aucun token — ni le clone git ni l’installation des dépendances ne sont en cause.
+
+1. **Onglet « Startup »** → section **« Environment Variables »** → ajoute `DISCORD_TOKEN`
+   (valeur = le token du portail développeur), puis `CLIENT_ID`, `GUILD_ID` et `THEME` si tu
+   veux les fixer → **Save** → redémarre le serveur.
+2. **Ou**, dans l’onglet **« Files »**, crée un fichier `.env` à la **racine** du serveur
+   (au même niveau que `main.py`) et colle le contenu de [.env.example](.env.example) en le
+   complétant. Il n’arrive jamais par `git` (il est dans `.gitignore`) : c’est normal, il faut
+   le créer à la main.
+
+Après un redéploiement qui reclone tout le dossier, vérifie que le `.env` est toujours là —
+garde une copie quelque part. Le démarrage doit rester `python main.py` : **jamais** `--sync`.
 
 ### Ressources et persistance
 
@@ -202,3 +220,15 @@ python -m unittest discover -s tests
 Les tests couvrent la mise en forme des embeds, la résolution des emojis, la migration
 des fiches, l’écriture UTF-8, l’intégrité de l’arbre de compétences et les attentes de
 session. Aucune connexion à Discord n’est nécessaire.
+
+## Aperçu du rendu
+
+Pour voir le rendu des embeds sans lancer le bot ni redéployer l’hébergeur :
+
+```bash
+python tools/preview.py     # écrit tools/preview.html
+```
+
+Le fichier est construit par le **vrai** code de rendu : c’est exactement ce que Discord
+affichera, aux polices système et aux emojis custom près. Ouvre-le dans un navigateur
+(ou dans le panneau Preview de l’éditeur).

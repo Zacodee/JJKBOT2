@@ -78,7 +78,6 @@ def build_profile_embeds(
                     ("role", "Rôle", profile.role),
                     guild=guild,
                 ),
-                theme.divider(),
                 theme.quote_block(profile.quote, guild),
             ),
         )

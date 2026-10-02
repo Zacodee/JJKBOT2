@@ -36,11 +36,17 @@ class ThemeRenderingTests(unittest.TestCase):
         self.assertEqual(len(lines), 2)
         self.assertTrue(lines[0].startswith("│ ·"))
         self.assertTrue(lines[1].startswith("╰ ·"))
-        self.assertIn('[Identité] → ["Zuruï"]', lines[0])
-        self.assertIn("Âge : [1 an]", lines[1])
+        self.assertIn('**[Identité]** → `["Zuruï"]`', lines[0])
+        self.assertIn("**Âge** : `[1 an]`", lines[1])
 
     def test_entry_remplace_les_valeurs_vides(self):
-        self.assertIn('[Race] → ["Non renseigné"]', theme.entry("race", "Race", ""))
+        self.assertIn('**[Race]** → `["Non renseigné"]`', theme.entry("race", "Race", ""))
+
+    def test_entry_neutralise_les_apostrophes_inversees_de_la_valeur(self):
+        rendered = theme.entry("race", "Race", "Fle`au")
+
+        self.assertEqual(rendered.count("`"), 2)
+        self.assertIn("Fle’au", rendered)
 
     def test_entry_unique_peut_porter_le_coude(self):
         self.assertTrue(theme.entry("race", "Race", "Fléau", last=True).startswith("╰ ·"))
@@ -57,6 +63,13 @@ class ThemeRenderingTests(unittest.TestCase):
 
     def test_quote_block_tronque_les_citations_longues(self):
         self.assertTrue(theme.quote_block("x" * 500).endswith("❞"))
+
+    def test_quote_block_tient_sur_une_seule_ligne(self):
+        rendered = theme.quote_block("Je suis tuff")
+
+        self.assertEqual(len(rendered.splitlines()), 1)
+        self.assertIn("**Citation**", rendered)
+        self.assertIn("❝ *Je suis tuff* ❞", rendered)
 
     def test_truncate(self):
         self.assertEqual(theme.truncate("abcdef", 4), "abc…")

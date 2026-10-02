@@ -149,6 +149,7 @@ def main() -> None:
     )
 
     try:
+        config.check_required()
         bot = JJKBot(sync_only=args.sync)
         bot.run(config.token(), log_handler=None)
     except config.ConfigError as error:

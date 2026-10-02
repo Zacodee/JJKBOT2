@@ -1,3 +1,38 @@
 {
-  "profiles": {}
+  "profiles": {
+    "1540742405849088052:651499309933658116": {
+      "name": "Zurui",
+      "age": "12",
+      "race": "fleau",
+      "grade": "S",
+      "alignment": "tkt",
+      "role": "Fleau",
+      "quote": "\"Je suis tuff\"",
+      "traits": [
+        "- tuff",
+        "- manipulation de l'ame",
+        "- elu des blackflash"
+      ],
+      "flaws": [
+        "- aveugle"
+      ],
+      "stats": {
+        "force": 0,
+        "resistance": 0,
+        "vitesse": 0,
+        "reserveEO": 0,
+        "sortieEO": 0
+      },
+      "statPoints": 0,
+      "experience": 0,
+      "unlockedSkills": [],
+      "imageName": null,
+      "imageUrl": null,
+      "imageFile": null,
+      "createdAt": "2026-10-02T20:02:26.413730+00:00",
+      "updatedAt": "2026-10-02T20:02:26.413766+00:00",
+      "version": 2
+    }
+  },
+  "version": 2
 }

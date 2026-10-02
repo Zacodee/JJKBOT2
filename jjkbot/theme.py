@@ -112,16 +112,21 @@ def entry(
 ) -> str:
     """Une ligne d’information, dans le style de la fiche de référence.
 
-    - `style="arrow"` : `╰ · 🪪 [Identité] → ["Zuruï"]`
-    - `style="colon"` : `╰ · ⏳ Âge : [1 ans]`
+    Le libellé est en **gras** et la valeur en `code` : c’est ce contraste de
+    graisse et de police qui donne à la fiche sa hiérarchie visuelle.
+
+    - `style="arrow"` : `│ · 🪪 **[Identité]** → `["Zuruï"]``
+    - `style="colon"` : `╰ · ⏳ **Âge** : `[1 an]``
     """
     prefix = "╰ ·" if last else "│ ·"
     text = str(value).strip() if value is not None and str(value).strip() else "Non renseigné"
     glyph = emoji(key, guild)
+    # Une apostrophe inversée saisie par un joueur casserait la mise en forme.
+    clean = text.replace("`", "\u2019")
 
     if style == "colon":
-        return f"{prefix} {glyph} {label} : [{text}]"
-    return f'{prefix} {glyph} [{label}] → ["{text}"]'
+        return f"{prefix} {glyph} **{label}** : `[{clean}]`"
+    return f'{prefix} {glyph} **[{label}]** → `["{clean}"]`'
 
 
 def group(*specs, guild=None) -> str:
@@ -144,9 +149,9 @@ def blocks(*chunks) -> str:
 
 
 def quote_block(quote: str, guild=None) -> str:
-    """Bloc de citation mis en avant."""
+    """Citation mise en avant, sur une seule ligne : `❯ **Citation** ❝ … ❞`."""
     text = str(quote).strip() if quote and str(quote).strip() else "Aucune citation renseignée."
-    return f"{emoji('citation', guild)} **Citation**\n❝ {truncate(text, 300)} ❞"
+    return f"{emoji('citation', guild)} **Citation** ❝ *{truncate(text, 300)}* ❞"
 
 
 def highlight(key: str, text: str, guild=None) -> str:
