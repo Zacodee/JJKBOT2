@@ -1,0 +1,7 @@
+21:27:34 | WARNING  | discord.client | PyNaCl is not installed, voice will NOT be supported
+21:27:34 | WARNING  | discord.client | davey is not installed, voice will NOT be supported
+21:27:34 | INFO     | discord.client | logging in using static token
+21:27:35 | INFO     | jjkbot | 3 commande(s) synchronisée(s) sur le serveur de test.
+21:27:36 | INFO     | discord.gateway | Shard ID None has connected to Gateway (Session ID: 0f6c26a8acde90be5b5ada88e9cd0724).
+21:27:38 | INFO     | jjkbot | Bot connecté : Jujutsu Kaisen Hollow terror#9370 • 2 serveur(s) • thème « violet »
+21:27:38 | INFO     | jjkbot | 35 emoji(s) custom manquant(s) : les emojis unicode de secours sont utilisés (voir /jjk emojis).
