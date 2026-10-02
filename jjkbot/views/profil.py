@@ -236,6 +236,12 @@ async def send_profile(
     content: str | None = None,
 ) -> None:
     """Affiche la fiche d’un joueur (ou prévient qu’elle n’existe pas)."""
+    # On accuse réception immédiatement : lecture du profil et envoi de l’image
+    # peuvent dépasser les 3 s du délai d’interaction (erreur 10062), surtout au
+    # redémarrage quand le disque du conteneur est lent.
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=ephemeral)
+
     profile = await get_profile(interaction.guild_id, target_user.id)
     if profile is None:
         message = (
@@ -243,14 +249,17 @@ async def send_profile(
             if target_user.id == interaction.user.id
             else f"{target_user.display_name} n’a pas encore créé de profil."
         )
-        await interaction.response.send_message(
-            embed=theme.notice_embed(theme.SECTION_ALERTE, "alerte", message),
+        await interaction.followup.send(
+            embed=theme.notice_embed(theme.SECTION_ALERTE, "alerte", message, interaction.guild),
             ephemeral=True,
         )
+        if not ephemeral:
+            # Le message public différé n’a pas de contenu : on le retire.
+            try:
+                await interaction.delete_original_response()
+            except discord.HTTPException:  # pragma: no cover - dépend de l’API
+                pass
         return
-
-    if not interaction.response.is_done():
-        await interaction.response.defer(ephemeral=ephemeral)
 
     embeds, files = await build_profile_message(
         profile,
@@ -545,9 +554,14 @@ async def set_profile_image(
     attachment: discord.Attachment | None = None,
 ) -> None:
     """Enregistre localement l’image envoyée par le joueur."""
+    # On accuse réception avant de télécharger : une image volumineuse peut
+    # dépasser les 3 s du délai d’interaction (erreur 10062).
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
+
     profile = await get_profile(interaction.guild_id, interaction.user.id)
     if profile is None:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=theme.notice_embed(
                 theme.SECTION_ALERTE,
                 "alerte",
@@ -560,7 +574,7 @@ async def set_profile_image(
 
     attachment = attachment or interaction.options.get_attachment("fichier")
     if attachment is None:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=theme.notice_embed(theme.SECTION_ERREUR, "erreur", "Aucun fichier reçu.", interaction.guild),
             ephemeral=True,
         )
@@ -568,13 +582,14 @@ async def set_profile_image(
 
     try:
         filename, _path = await images.save_image(interaction.guild_id, interaction.user.id, attachment)
-    except ValueError as error:
+    except (ValueError, OSError, discord.HTTPException) as error:
         reason = (
             "Le fichier est trop volumineux (8 Mo maximum)."
             if "volumineux" in str(error)
             else "Le fichier doit être une image PNG, JPG, WEBP ou un GIF."
         )
-        await interaction.response.send_message(
+        logger.warning("Image refusée pour %s : %s", interaction.user.id, error)
+        await interaction.followup.send(
             embed=theme.notice_embed(theme.SECTION_ERREUR, "erreur", reason, interaction.guild),
             ephemeral=True,
         )

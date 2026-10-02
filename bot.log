@@ -5,3 +5,42 @@
 21:27:36 | INFO     | discord.gateway | Shard ID None has connected to Gateway (Session ID: 0f6c26a8acde90be5b5ada88e9cd0724).
 21:27:38 | INFO     | jjkbot | Bot connecté : Jujutsu Kaisen Hollow terror#9370 • 2 serveur(s) • thème « violet »
 21:27:38 | INFO     | jjkbot | 35 emoji(s) custom manquant(s) : les emojis unicode de secours sont utilisés (voir /jjk emojis).
+22:56:20 | ERROR    | jjkbot | Erreur pendant la commande /profil voir : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 42, in voir
+    await profil_views.send_profile(interaction, target)
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\views\profil.py", line 253, in send_profile
+    embed=theme.notice_embed(theme.SECTION_ALERTE, "alerte", message, interaction.guild),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 892, in defer
+    response = await adapter.create_interaction_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
+22:56:54 | ERROR    | jjkbot | Erreur pendant la commande /profil voir : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 42, in voir
+    await profil_views.send_profile(interaction, target)
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\views\profil.py", line 253, in send_profile
+    embed=theme.notice_embed(theme.SECTION_ALERTE, "alerte", message, interaction.guild),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 892, in defer
+    response = await adapter.create_interaction_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
+23:00:00 | INFO     | discord.gateway | Shard ID None has successfully RESUMED session 0f6c26a8acde90be5b5ada88e9cd0724.

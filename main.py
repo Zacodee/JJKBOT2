@@ -79,6 +79,13 @@ class JJKBot(commands.Bot):
             config.THEME,
         )
 
+        # Repère de déploiement : si « intent actif=False », l’ancien code tourne.
+        logger.info(
+            "Emojis : intent actif=%s • %d emoji(s) custom indexé(s).",
+            self.intents.emojis,
+            emojis_module.emojis.index_count(),
+        )
+
         missing = emojis_module.emojis.missing_keys(self.guilds[0] if self.guilds else None)
         if missing:
             logger.info(
