@@ -11,9 +11,15 @@
     display: flex; flex-direction: column; gap: 24px; align-items: flex-start;
   }
   h1 { font-size: 15px; font-weight: 600; color: #949ba4; margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+  .legend { font-size: 13px; color: #b5bac1; max-width: 720px; line-height: 1.5; }
+  .section-label { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .section-label.bad { color: #f4a9a9; }
+  .section-label.good { color: #a9f4c1; }
   .pair { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
   .column { display: flex; flex-direction: column; gap: 8px; }
   .tag { font-size: 12px; font-weight: 700; color: #949ba4; text-transform: uppercase; letter-spacing: .06em; }
+  .tag.bad { color: #f4a9a9; }
+  .tag.good { color: #a9f4c1; }
   .embed {
     background: #2b2d31; border-left: 4px solid var(--c, #5865f2); border-radius: 4px;
     padding: 12px 16px; width: 480px; display: flex; flex-direction: column; gap: 8px;
@@ -21,61 +27,101 @@
   .author { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #f2f3f5; }
   .avatar { width: 24px; height: 24px; border-radius: 50%; background: #5865f2; }
   .title { font-size: 16px; font-weight: 700; color: #f2f3f5; }
-  .desc { font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
+  .desc, .field-value { font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
   .field-name { font-size: 14px; font-weight: 700; color: #f2f3f5; margin-top: 4px; }
-  .field-value { font-size: 14px; line-height: 1.45; }
   .footer { font-size: 12px; color: #949ba4; }
+  .h1 { font-size: 22px; font-weight: 700; color: #f2f3f5; }
+  .h2 { font-size: 18px; font-weight: 700; color: #f2f3f5; }
+  .h3 { font-size: 16px; font-weight: 700; color: #f2f3f5; }
   code {
     background: #1e1f22; border-radius: 4px; padding: .12em .32em;
     font-family: Consolas, "Courier New", monospace; font-size: .86em;
   }
+  pre.codeblock {
+    background: #1e1f22; border: 1px solid #232428; border-radius: 4px;
+    padding: 8px 10px; margin: 4px 0; font-family: Consolas, "Courier New", monospace;
+    font-size: 13px; line-height: 1.4; white-space: pre;
+  }
   u { text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  .cemoji {
+    display: inline-block; background: #5865f2; color: #fff; border-radius: 4px;
+    padding: 0 .35em; font-size: .82em; font-weight: 600; vertical-align: baseline;
+  }
 </style>
 </head>
 <body>
 <h1>Aperçu généré par jjkbot — profil de Zuruï</h1>
-<div class="pair">
-  <div class="column">
-    <span class="tag">Avant</span>
-    <div class="embed" style="--c:#8B5CF6"><div class="desc" id="before"></div></div>
-  </div>
-</div>
-<div id="panels" class="pair"></div>
+<p class="legend">
+  Les pastilles bleues <span class="cemoji">:nom:</span> représentent les
+  <strong>emojis custom du serveur</strong> (rendus ici en texte, ils apparaissent
+  en image sur Discord). Dans la colonne «&nbsp;Avant&nbsp;» le bot retombait sur
+  les emojis unicode : c’est le bug de l’intent <code>emojis</code>.
+</p>
+<div class="section-label bad">Avant le correctif — replis unicode</div>
+<div id="before" class="pair"></div>
+<div class="section-label good">Après le correctif — emojis custom du serveur</div>
+<div id="after" class="pair"></div>
 <script>
-const PANELS = [{"label": "Profil", "title": "📛 — __Profil__ : @izouk", "description": "│ · 🪪 **[Identité]** → `[\"Zuruï\"]`\n╰ · ⏳ **Âge** : `[1 an]`\n\n│ · 🧬 **[Race]** → `[\"Fléau\"]`\n╰ · 🎖️ **[Grade]** → `[\"Spécial\"]`\n\n│ · ⚖️ **[Alignement]** → `[\"Chaotique mauvais\"]`\n╰ · 🎭 **[Rôle]** → `[\"Fléaux\"]`\n\n❯ **Citation** ❝ *Tricheur, menteur, porte malheur.. tout ces jolie nom pour parlé de moi... le quel choisit ?* ❞", "fields": [], "footer": "✦ Page 1 / 3 • Fiche RP", "colour": "#8b5cf6"}, {"label": "Statistiques", "title": "📊 — __Statistiques__ : Zuruï", "description": "▌ 💠 Points à attribuer — **0**\n\n▌ 📈 Total réparti — **0** point(s)", "fields": [{"name": "⚔️ Force", "value": "`0`", "inline": true}, {"name": "🛡️ Résistance", "value": "`0`", "inline": true}, {"name": "💨 Vitesse", "value": "`0`", "inline": true}, {"name": "🔮 Réserve d'EO", "value": "`0`", "inline": true}, {"name": "🌀 Sortie d'EO", "value": "`0`", "inline": true}], "footer": "✦ Page 2 / 3 • Fiche RP", "colour": "#5865f2"}, {"label": "Traits & défauts", "title": "🧬 — __Traits & défauts__ : Zuruï", "description": "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈", "fields": [{"name": "✅ Traits", "value": "• Sournois\n• Bavard", "inline": true}, {"name": "⚠️ Défauts", "value": "• Imprévisible", "inline": true}], "footer": "✦ Page 3 / 3 • Fiche RP", "colour": "#22a06b"}];
-const BEFORE = "📛 — __Profil__ : @izouk\n│ · 🪪 [Identité] → [\"Zuruï\"]\n╰ · ⏳ Âge : [1 an]\n\n│ · 🧬 [Race] → [\"Fléau\"]\n╰ · 🎖️ [Grade] : [Spécial]\n\n│ · ⚖️ [Alignement] → [\"Chaotique mauvais\"]\n╰ · 🎭 [Rôle] : [Fléaux]\n\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n❯ **Citation**\n❝ Tricheur, menteur, porte malheur.. ❞";
+const BEFORE = [{"label": "Profil", "title": "📛 — __Profil__ : @izouk", "description": "│ · 🪪 **[Identité]** → `[\"Zuruï\"]`\n╰ · ⏳ **Âge** : `[1 an]`\n\n│ · 🧬 **[Race]** → `[\"Fléau\"]`\n╰ · 🎖️ **[Grade]** → `[\"Spécial\"]`\n\n│ · ⚖️ **[Alignement]** → `[\"Chaotique mauvais\"]`\n╰ · 🎭 **[Rôle]** → `[\"Fléaux\"]`\n\n❯ **Citation** ❝ *Tricheur, menteur, porte malheur.. tout ces jolie nom pour parlé de moi... le quel choisit ?* ❞", "fields": [], "footer": "✦ Page 1 / 3 • Fiche RP", "colour": "#8b5cf6"}, {"label": "Statistiques", "title": "📊 — __Statistiques__ : Zuruï", "description": "## 📊 Vue d’ensemble\n\n▌ 💠 Points à attribuer — **0**\n\n▌ 📈 Total réparti — **0** point(s)", "fields": [{"name": "⚔️ Force", "value": "`0`", "inline": true}, {"name": "🛡️ Résistance", "value": "`0`", "inline": true}, {"name": "💨 Vitesse", "value": "`0`", "inline": true}, {"name": "🔮 Réserve d'EO", "value": "`0`", "inline": true}, {"name": "🌀 Sortie d'EO", "value": "`0`", "inline": true}], "footer": "✦ Page 2 / 3 • Fiche RP", "colour": "#5865f2"}, {"label": "Traits & défauts", "title": "🧬 — __Traits & défauts__ : Zuruï", "description": "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈", "fields": [{"name": "✅ Traits", "value": "• Sournois\n• Bavard", "inline": true}, {"name": "⚠️ Défauts", "value": "• Imprévisible", "inline": true}], "footer": "✦ Page 3 / 3 • Fiche RP", "colour": "#22a06b"}];
+const AFTER = [{"label": "Profil", "title": "<:jjk_profil:9000> — __Profil__ : @izouk", "description": "│ · <:jjk_identite:9001> **[Identité]** → `[\"Zuruï\"]`\n╰ · <:jjk_age:9002> **Âge** : `[1 an]`\n\n│ · <:jjk_race:9003> **[Race]** → `[\"Fléau\"]`\n╰ · <:jjk_grade:9004> **[Grade]** → `[\"Spécial\"]`\n\n│ · <:jjk_alignement:9005> **[Alignement]** → `[\"Chaotique mauvais\"]`\n╰ · <:jjk_role:9006> **[Rôle]** → `[\"Fléaux\"]`\n\n<:jjk_citation:9007> **Citation** ❝ *Tricheur, menteur, porte malheur.. tout ces jolie nom pour parlé de moi... le quel choisit ?* ❞", "fields": [], "footer": "✦ Page 1 / 3 • Fiche RP", "colour": "#8b5cf6"}, {"label": "Statistiques", "title": "<:jjk_stats:9009> — __Statistiques__ : Zuruï", "description": "## <:jjk_stats:9009> Vue d’ensemble\n\n▌ <:jjk_points:9015> Points à attribuer — **0**\n\n▌ <:jjk_progression:9031> Total réparti — **0** point(s)", "fields": [{"name": "<:jjk_force:9010> Force", "value": "`0`", "inline": true}, {"name": "<:jjk_resistance:9011> Résistance", "value": "`0`", "inline": true}, {"name": "<:jjk_vitesse:9012> Vitesse", "value": "`0`", "inline": true}, {"name": "<:jjk_eo_reserve:9013> Réserve d'EO", "value": "`0`", "inline": true}, {"name": "<:jjk_eo_sortie:9014> Sortie d'EO", "value": "`0`", "inline": true}], "footer": "✦ Page 2 / 3 • Fiche RP", "colour": "#5865f2"}, {"label": "Traits & défauts", "title": "<:jjk_page_traits:9034> — __Traits & défauts__ : Zuruï", "description": "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈", "fields": [{"name": "<:jjk_debloque:9018> Traits", "value": "• Sournois\n• Bavard", "inline": true}, {"name": "<:jjk_alerte:9027> Défauts", "value": "• Imprévisible", "inline": true}], "footer": "✦ Page 3 / 3 • Fiche RP", "colour": "#22a06b"}];
 
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function markdown(text) {
-  const escaped = escapeHtml(text);
-  return escaped.replace(/(`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*)/g, (match) => {
-    if (match.startsWith("`")) return "<code>" + match.slice(1, -1) + "</code>";
-    if (match.startsWith("**")) return "<strong>" + match.slice(2, -2) + "</strong>";
-    if (match.startsWith("__")) return "<u>" + match.slice(2, -2) + "</u>";
-    return "<em>" + match.slice(1, -1) + "</em>";
-  });
+function renderInline(text) {
+  return text
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/__([^_\n]+)__/g, "<u>$1</u>")
+    .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+    .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
+    .replace(/&lt;a?:(\w+):\d+&gt;/g, '<span class="cemoji" title="emoji du serveur">:$1:</span>');
 }
 
-document.getElementById("before").innerHTML = markdown(BEFORE);
+function markdown(text) {
+  const lines = escapeHtml(text).split("\n");
+  const out = [];
+  let inCode = false;
+  let buffer = [];
+  for (const line of lines) {
+    if (line.trim().startsWith("```")) {
+      if (inCode) { out.push('<pre class="codeblock">' + buffer.join("\n") + "</pre>"); buffer = []; inCode = false; }
+      else { inCode = true; }
+      continue;
+    }
+    if (inCode) { buffer.push(line); continue; }
+    const heading = line.match(/^(#{1,3})\s+(.*)$/);
+    if (heading) {
+      const level = heading[1].length;
+      out.push('<div class="h' + level + '">' + renderInline(heading[2]) + "</div>");
+      continue;
+    }
+    out.push(renderInline(line));
+  }
+  if (inCode) { out.push('<pre class="codeblock">' + buffer.join("\n") + "</pre>"); }
+  return out.join("\n");
+}
 
-document.getElementById("panels").innerHTML = PANELS.map((panel) => `
+function panel(entry, tone) {
+  return `
   <div class="column">
-    <span class="tag">Après — ${escapeHtml(panel.label)}</span>
-    <div class="embed" style="--c:${panel.colour}">
+    <span class="tag ${tone}">${escapeHtml(entry.label)}</span>
+    <div class="embed" style="--c:${entry.colour}">
       <div class="author"><div class="avatar"></div>izouk</div>
-      <div class="title">${markdown(panel.title)}</div>
-      <div class="desc">${markdown(panel.description)}</div>
-      ${panel.fields.map((field) => `
+      <div class="title">${markdown(entry.title)}</div>
+      <div class="desc">${markdown(entry.description)}</div>
+      ${entry.fields.map((field) => `
         <div>
           <div class="field-name">${markdown(field.name)}</div>
           <div class="field-value">${markdown(field.value)}</div>
         </div>`).join("")}
-      <div class="footer">${escapeHtml(panel.footer)}</div>
+      <div class="footer">${escapeHtml(entry.footer)}</div>
     </div>
-  </div>`).join("");
+  </div>`;
+}
+
+document.getElementById("before").innerHTML = BEFORE.map(e => panel(e, "bad")).join("");
+document.getElementById("after").innerHTML = AFTER.map(e => panel(e, "good")).join("");
 </script>
 </body>
 </html>

@@ -70,7 +70,8 @@ class ProfileEmbedTests(unittest.TestCase):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "global", None)[0]
 
         self.assertIn("__Profil__", embed.title)
-        self.assertIn('<@2>', embed.title)
+        self.assertIn("@Izouk", embed.title)
+        self.assertNotIn("<", embed.title)
         self.assertIn("Zuruï", embed.description)
         self.assertIn("1 an", embed.description)
         self.assertIn("Chaotique mauvais", embed.description)

@@ -164,6 +164,26 @@ def section(key: str, text: str, guild=None) -> str:
     return f"{emoji(key, guild)} **{text}**"
 
 
+def heading(text: str, level: int = 2, guild=None, key: str | None = None) -> str:
+    """Titre Markdown (`##`, `###`).
+
+    Attention : les titres ne sont rendus par Discord que dans la
+    **description** d’un embed, jamais dans les noms ni les valeurs de champ.
+    """
+    glyph = f"{emoji(key, guild)} " if key else ""
+    return f"{'#' * max(1, min(3, level))} {glyph}{text}"
+
+
+def code_block(lines, language: str = "") -> str:
+    """Bloc de code Markdown (triple accent grave), idéal pour un tableau aligné.
+
+    À l’intérieur, ni le gras, ni l’italique, ni les emojis custom ne sont
+    rendus : réserve-le aux données brutes.
+    """
+    body = "\n".join(str(line) for line in lines)
+    return f"```{language}\n{body}\n```"
+
+
 def divider() -> str:
     """Séparateur discret entre deux blocs."""
     return "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈"

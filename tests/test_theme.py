@@ -57,6 +57,18 @@ class ThemeRenderingTests(unittest.TestCase):
 
         self.assertEqual(blob, "a\n\nb")
 
+    def test_heading_markdown(self):
+        self.assertEqual(theme.heading("Titre", 2), "## Titre")
+        self.assertEqual(theme.heading("Titre", 9), "### Titre")
+        self.assertEqual(theme.heading("Titre", 0), "# Titre")
+
+    def test_code_block_markdown(self):
+        rendered = theme.code_block(["ligne 1", "ligne 2"])
+
+        self.assertTrue(rendered.startswith("```"))
+        self.assertTrue(rendered.endswith("```"))
+        self.assertIn("ligne 1\nligne 2", rendered)
+
     def test_quote_block_avec_et_sans_citation(self):
         self.assertIn("Aucune citation", theme.quote_block(""))
         self.assertIn("Tricheur, menteur", theme.quote_block("Tricheur, menteur"))

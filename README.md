@@ -9,7 +9,9 @@ présentés dans des embeds sobres et carrés qui utilisent les **emojis du serv
 - Python **3.11 ou plus** (testé sur 3.13).
 - Un bot Discord avec les permissions `Envoyer des messages`, `Intégrer des liens`,
   `Joindre des fichiers` et `Utiliser les commandes d’application`.
-- **Aucun intent privilégié** n’est nécessaire (le bot ne demande que l’intent `guilds`).
+- **Aucun intent privilégié** n’est nécessaire. Le bot demande les intents `guilds`
+  et `emojis` (⚠️ sans l’intent `emojis`, aucun emoji custom n’est détecté : voir
+  [Emojis du serveur](#emojis-du-serveur)).
 
 ## Installation
 
@@ -73,6 +75,13 @@ statistiques, panier, boutons…) possède une clé reliée à un **emoji custom
 - Un emoji animé fonctionne aussi (le bot détecte le préfixe `a:`).
 - `/jjk emojis` (staff, réponse éphémère) liste les emojis trouvés et **les noms exacts
   à créer** sur le serveur, avec le repli utilisé pour chacun.
+
+> ⚠️ **Si le bot affiche les emojis de secours malgré la création des emojis**, vérifie
+> que l’intent `emojis` est bien activé dans `main.py`. discord.py ne remplit
+> `guild.emojis` **que** si cet intent est actif : sans lui, la liste est vide et tous
+> les emojis retombent sur le repli unicode. L’intent `emojis` n’est pas privilégié,
+> rien à cocher dans le portail développeur. Après un ajout d’emoji pendant que le bot
+> tourne, relance `/jjk emojis` (le diagnostic rafraîchit le catalogue) ou redémarre le bot.
 
 ## Commandes
 

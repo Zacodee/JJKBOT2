@@ -136,8 +136,18 @@ class EmojiResolver:
         index = self._guild_index(guild)
         if spec.name in index:
             return index[spec.name]
+        # L’index peut être en retard (emoji ajouté pendant la session) : on
+        # relit directement la collection du serveur passé au rendu.
+        if guild is not None:
+            for emoji in getattr(guild, "emojis", ()) or ():
+                if getattr(emoji, "name", None) == spec.name:
+                    return emoji
         # L’emoji peut vivre sur un autre serveur du bot : il reste utilisable.
         return self._by_name.get(spec.name)
+
+    def index_count(self) -> int:
+        """Nombre d’emojis custom indexés (diagnostic)."""
+        return len(self._by_name)
 
     def get(self, key: str, guild=None) -> str:
         """Renvoie l’emoji prêt à être inséré dans un texte."""

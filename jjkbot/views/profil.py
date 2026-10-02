@@ -61,7 +61,7 @@ def build_profile_embeds(
     if page == "global":
         embed = discord.Embed(
             colour=theme.color(section),
-            title=theme.title("profil", "Profil", guild, suffix=f": {target_user.mention}"),
+            title=theme.title("profil", "Profil", guild, suffix=f": @{target_user.display_name}"),
             description=theme.blocks(
                 theme.group(
                     ("identite", "Identité", profile.name),
@@ -87,6 +87,7 @@ def build_profile_embeds(
             colour=theme.color(section),
             title=theme.title("stats", "Statistiques", guild, suffix=f": {profile.name}"),
             description=theme.blocks(
+                theme.heading("Vue d’ensemble", 2, guild, "stats"),
                 theme.highlight("points", f"Points à attribuer — **{profile.stat_points}**", guild),
                 theme.highlight("progression", f"Total réparti — **{total}** point(s)", guild),
             ),

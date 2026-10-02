@@ -27,11 +27,16 @@ SWEEP_INTERVAL = 5 * 60  # Purge des attentes expirées.
 
 
 class JJKBot(commands.Bot):
-    """Bot du serveur, avec un seul intent (guilds) — aucun intent privilégié."""
+    """Bot du serveur, intents `guilds` + `emojis` — aucun intent privilégié."""
 
     def __init__(self, *, sync_only: bool = False) -> None:
         intents = discord.Intents.none()
         intents.guilds = True
+        # Indispensable : discord.py ne peuple `guild.emojis` que si l’intent
+        # « emojis » (alias « expressions » en 2.5+) est actif, et n’émet
+        # `on_guild_emojis_update` que dans ce cas. Sans lui, `refresh_emojis`
+        # indexe des listes vides et chaque emoji retombe sur son repli unicode.
+        intents.emojis = True
 
         super().__init__(
             command_prefix=commands.when_mentioned,

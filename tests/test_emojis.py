@@ -140,7 +140,19 @@ class EmojiResolverTests(unittest.TestCase):
         self.resolver.refresh([self.guild])
         self.resolver.refresh([FakeGuild(42, [])])
 
-        self.assertEqual(self.resolver.get("profil", self.guild), "📛")
+        self.assertEqual(self.resolver.index_count(), 0)
+        self.assertEqual(self.resolver.get("profil", self.other_guild), "📛")
+
+    def test_index_live_du_serveur_comble_un_index_perime(self):
+        # Index global vide (émule l’absence d’intent au moment du refresh)…
+        self.resolver.refresh([self.other_guild])
+        # …mais le serveur passé au rendu porte encore l’emoji : lecture directe.
+        self.assertEqual(self.resolver.get("profil", self.guild), "<:jjk_profil:111>")
+
+    def test_index_count_suit_le_refresh(self):
+        self.assertEqual(self.resolver.index_count(), 0)
+        self.resolver.refresh([self.guild])
+        self.assertEqual(self.resolver.index_count(), 2)
 
 
 if __name__ == "__main__":  # pragma: no cover
