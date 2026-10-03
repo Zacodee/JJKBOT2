@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 
 import discord
@@ -17,6 +18,9 @@ import discord
 from jjkbot import config
 
 logger = logging.getLogger(__name__)
+
+# Délai minimal entre deux récupérations REST pour un même serveur.
+REST_FETCH_COOLDOWN = 300.0
 
 
 @dataclass(frozen=True)
@@ -109,6 +113,7 @@ class EmojiResolver:
         self._catalog = catalog
         self._by_guild: dict[int, dict[str, discord.Emoji]] = {}
         self._by_name: dict[str, discord.Emoji] = {}
+        self._last_rest_fetch: dict[int, float] = {}
 
     @property
     def catalog(self) -> dict[str, EmojiSpec]:
@@ -148,6 +153,60 @@ class EmojiResolver:
     def index_count(self) -> int:
         """Nombre d’emojis custom indexés (diagnostic)."""
         return len(self._by_name)
+
+    def fallback(self, key: str) -> str:
+        """Emoji unicode de secours d’une clé.
+
+        À l’intérieur d’un bloc de code Markdown, les emojis custom du
+        serveur ne sont pas rendus : on y insère donc ce repli unicode.
+        """
+        spec = self._catalog.get(key)
+        return spec.fallback if spec else "❔"
+
+    async def ensure_loaded(self, guild) -> None:
+        """Complète l’index via l’API REST si le cache du serveur est vide.
+
+        Filet de sécurité : si l’intent « emojis » n’était pas actif au
+        démarrage (ancien déploiement) ou si le cache passerelle est vide,
+        `guild.emojis` ne contient rien et tous les emojis retombent sur leur
+        repli unicode. L’endpoint REST `GET /guilds/{id}/emojis` fonctionne
+        lui même sans cet intent : on s’en sert pour réparer à chaud.
+        """
+        if guild is None or not hasattr(guild, "fetch_emojis"):
+            return
+        if list(getattr(guild, "emojis", ()) or ()):
+            # Cache passerelle peuplé : `_find` le lit en direct, rien à faire.
+            return
+
+        guild_id = getattr(guild, "id", None)
+        last = self._last_rest_fetch.get(guild_id, float("-inf"))
+        if time.monotonic() - last < REST_FETCH_COOLDOWN:
+            return
+        self._last_rest_fetch[guild_id] = time.monotonic()
+
+        try:
+            fetched = await guild.fetch_emojis()
+        except discord.HTTPException as error:
+            logger.warning(
+                "Impossible de récupérer les emojis du serveur %s via l’API REST : %s",
+                guild_id,
+                error,
+            )
+            return
+
+        index: dict[str, discord.Emoji] = {}
+        for emoji in fetched:
+            index[emoji.name] = emoji
+            self._by_name.setdefault(emoji.name, emoji)
+        if guild_id in self._by_guild:
+            self._by_guild[guild_id].update(index)
+        else:
+            self._by_guild[guild_id] = index
+        logger.info(
+            "Emojis récupérés via l’API REST pour le serveur %s : %d trouvé(s).",
+            guild_id,
+            len(index),
+        )
 
     def get(self, key: str, guild=None) -> str:
         """Renvoie l’emoji prêt à être inséré dans un texte."""
@@ -190,3 +249,8 @@ emojis = EmojiResolver(load_catalog())
 def refresh_emojis(guilds) -> None:
     """Rafraîchit le catalogue global."""
     emojis.refresh(guilds)
+
+
+async def ensure_loaded(guild) -> None:
+    """Répare l’index d’un serveur via l’API REST si son cache est vide."""
+    await emojis.ensure_loaded(guild)

@@ -69,38 +69,42 @@ class ProfileEmbedTests(unittest.TestCase):
     def test_page_profil_contient_les_huit_champs(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "global", None)[0]
 
-        self.assertIn("__Profil__", embed.title)
-        self.assertIn("@Izouk", embed.title)
-        self.assertNotIn("<", embed.title)
-        self.assertIn("Zuruï", embed.description)
-        self.assertIn("1 an", embed.description)
+        # Le titre stylé vit désormais dans la description (seul endroit où
+        # Discord rend le Markdown), pas dans embed.title.
+        self.assertIsNone(embed.title)
+        self.assertTrue(embed.description.startswith("## 📛"))
+        self.assertIn("@Izouk", embed.description)
+        self.assertIn("**Identité :** `Zuruï`", embed.description)
+        self.assertIn("**Âge :** `1 an`", embed.description)
         self.assertIn("Chaotique mauvais", embed.description)
         self.assertIn("citation", embed.description.lower())
         self.assertIn("Page 1 / 3", embed.footer.text)
 
-    def test_page_statistiques_utilise_des_champs_natifs(self):
+    def test_page_statistiques_en_bloc_de_code(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "stats", None)[0]
 
-        self.assertEqual(len(embed.fields), 5)
-        self.assertEqual(
-            [field.name.split()[-1] for field in embed.fields],
-            ["Force", "Résistance", "Vitesse", "d'EO", "d'EO"],
-        )
-        self.assertTrue(all(field.value == "`0`" for field in embed.fields))
+        self.assertEqual(len(embed.fields), 0)
+        self.assertIn("## 📊", embed.description)
+        self.assertIn("Points à attribuer", embed.description)
+        self.assertIn("```", embed.description)
+        for label in ("Force", "Résistance", "Vitesse", "Réserve d'EO", "Sortie d'EO"):
+            self.assertIn(label, embed.description)
         self.assertIn("Page 2 / 3", embed.footer.text)
 
     def test_page_traits_et_defauts(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "traits", None)[0]
 
-        self.assertEqual([field.name for field in embed.fields], ["✅ Traits", "⚠️ Défauts"])
-        self.assertIn("Rusé", embed.fields[0].value)
-        self.assertIn("Impitoyable", embed.fields[1].value)
+        self.assertEqual(len(embed.fields), 0)
+        self.assertIn("### ✅ Traits", embed.description)
+        self.assertIn("### ⚠️ Défauts", embed.description)
+        self.assertIn("Rusé", embed.description)
+        self.assertIn("Impitoyable", embed.description)
         self.assertIn("Page 3 / 3", embed.footer.text)
 
     def test_page_inconnue_retombe_sur_le_profil(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "???", None)[0]
 
-        self.assertIn("__Profil__", embed.title)
+        self.assertTrue(embed.description.startswith("## 📛"))
 
     def test_banniere_ajoutee_quand_configuree(self):
         with unittest.mock.patch.object(config, "BANNER_URL", "https://exemple.test/b.png"):

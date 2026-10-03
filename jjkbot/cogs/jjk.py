@@ -8,81 +8,76 @@ from jjkbot import config, emojis as emojis_module, permissions, theme
 
 
 def build_help_embed(guild: discord.Guild | None = None) -> discord.Embed:
-    """Guide de démarrage destiné aux nouveaux membres."""
+    """Guide de démarrage destiné aux nouveaux membres.
+
+    Tout le contenu vit dans la description : c’est le seul endroit d’un embed
+    où Discord rend les titres `##`, le gras et les blocs de code.
+    """
     e = lambda key: theme.emoji(key, guild)  # noqa: E731 - raccourci de lisibilité
 
-    embed = discord.Embed(
-        colour=theme.color(theme.SECTION_AIDE),
-        title=theme.title("aide", "Guide du nouveau sorcier", guild),
-        description=theme.blocks(
-            "Bienvenue dans le monde du jujutsu ! Ce guide t’explique pas à pas comment créer "
-            "ton personnage et utiliser les commandes du bot.",
-            theme.divider(),
-        ),
-    )
-
-    embed.add_field(
-        name=f"{e('profil')} Créer ton personnage",
-        value="\n".join(
+    sections = (
+        (
+            f"{e('profil')} Créer ton personnage",
             [
                 f"`/profil creer` • étape 1 : {e('identite')} identité, {e('age')} âge, "
                 f"{e('race')} race, {e('grade')} grade, {e('alignement')} alignement",
                 f"`/profil creer` • étape 2 : {e('role')} rôle, {e('citation')} citation, "
                 "traits et défauts",
                 f"`/profil image` • {e('image')} ajoute une image PNG, JPG, WEBP ou un GIF",
-            ]
+            ],
         ),
-        inline=False,
-    )
-    embed.add_field(
-        name=f"{e('page_profil')} Consulter et modifier ta fiche",
-        value="\n".join(
+        (
+            f"{e('page_profil')} Consulter et modifier ta fiche",
             [
                 f"`/profil voir` • {e('page_profil')} 3 pages navigables : profil, "
                 f"{e('page_stats')} statistiques, {e('page_traits')} traits et défauts",
-                f"`/profil voir joueur:` • consulte la fiche d’un autre membre",
-                f"`/profil modifier` • mets ta fiche à jour",
-            ]
+                "`/profil voir joueur:` • consulte la fiche d’un autre membre",
+                "`/profil modifier` • mets ta fiche à jour",
+            ],
         ),
-        inline=False,
-    )
-    embed.add_field(
-        name=f"{e('points')} Points de statistique",
-        value="\n".join(
+        (
+            f"{e('points')} Points de statistique",
             [
                 f"`/profil attribuer-stat` • {e('points')} investis tes points dans "
                 f"{e('force')} Force, {e('resistance')} Résistance, {e('vitesse')} Vitesse, "
                 f"{e('reserve_eo')} Réserve d’EO ou {e('sortie_eo')} Sortie d’EO",
                 f"`/profil donner-points` • {e('aide')} le staff t’en attribue après un RP",
-            ]
+            ],
         ),
-        inline=False,
-    )
-    embed.add_field(
-        name=f"{e('competences')} Compétences",
-        value="\n".join(
+        (
+            f"{e('competences')} Compétences",
             [
                 f"`/competences voir` • {e('competences')} l’arbre complet, catégorie par catégorie",
                 f"`/competences acheter` • {e('panier')} panier multi-compétences, "
                 "prérequis vérifiés automatiquement",
                 f"{e('xp')} l’XP s’obtient en RP : le staff l’attribue avec `/competences xp`",
-            ]
+            ],
         ),
-        inline=False,
-    )
-    embed.add_field(
-        name=f"{e('alerte')} Commandes du staff",
-        value="\n".join(
+        (
+            f"{e('alerte')} Commandes du staff",
             [
                 "`/profil donner-points` • points de statistique",
                 "`/competences xp` • expérience",
                 "`/profil reset` • profil complet, statistiques ou compétences",
                 "`/jjk emojis` • vérifier les emojis du serveur",
-            ]
+            ],
         ),
-        inline=False,
     )
 
+    chunks = [
+        theme.title("aide", "Guide du nouveau sorcier", guild),
+        "Bienvenue dans le monde du jujutsu ! Ce guide t’explique pas à pas comment créer "
+        "ton personnage et utiliser les commandes du bot.",
+        theme.divider(),
+    ]
+    for heading, lines in sections:
+        chunks.append(theme.heading(heading, 3, guild))
+        chunks.append("\n".join(lines))
+
+    embed = discord.Embed(
+        colour=theme.color(theme.SECTION_AIDE),
+        description=theme.blocks(*chunks),
+    )
     embed.set_footer(text="✦ Bonne aventure, sorcier. Que ton énergie occulte te guide. ✦")
     if config.HELP_GIF_URL:
         embed.set_image(url=config.HELP_GIF_URL)
@@ -158,6 +153,7 @@ class JjkCog(
     @app_commands.command(name="help", description="Guide de démarrage et utilité des commandes")
     @app_commands.guild_only()
     async def help(self, interaction: discord.Interaction) -> None:
+        await emojis_module.ensure_loaded(interaction.guild)
         await interaction.response.send_message(
             embeds=theme.with_banner(build_help_embed(interaction.guild))
         )
@@ -168,7 +164,9 @@ class JjkCog(
         if not await permissions.ensure_staff(interaction):
             return
 
-        emojis_module.refresh_emojis(interaction.client.guilds)
+        # Répare l’index via l’API REST si le cache passerelle est vide, puis
+        # dresse l’état du catalogue : aucun refresh brutal qui écraserait la réparation.
+        await emojis_module.ensure_loaded(interaction.guild)
         rows = emojis_module.emojis.status(interaction.guild)
         await interaction.response.send_message(
             embed=build_emoji_report_embed(interaction.guild, rows),

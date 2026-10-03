@@ -19,38 +19,33 @@ class _FakeUser:
 
 
 class ThemeRenderingTests(unittest.TestCase):
-    def test_title_contient_le_libelle_et_le_repli_unicode(self):
-        rendered = theme.title("profil", "Profil", None, suffix=": @izouk")
+    def test_title_est_une_ligne_de_titre_markdown(self):
+        rendered = theme.title("profil", "Profil", None, suffix=" : @izouk")
 
-        self.assertTrue(rendered.startswith("📛"))
-        self.assertIn("__Profil__", rendered)
+        self.assertTrue(rendered.startswith("## 📛"))
+        self.assertIn("Profil", rendered)
         self.assertTrue(rendered.endswith(": @izouk"))
 
-    def test_group_alterne_les_prefixes(self):
+    def test_entry_met_le_libelle_en_gras_et_la_valeur_en_code(self):
         blob = theme.group(
             ("identite", "Identité", "Zuruï"),
-            ("age", "Âge", "1 an", "colon"),
+            ("age", "Âge", "1 an"),
         )
         lines = blob.splitlines()
 
         self.assertEqual(len(lines), 2)
-        self.assertTrue(lines[0].startswith("│ ·"))
-        self.assertTrue(lines[1].startswith("╰ ·"))
-        self.assertIn('**[Identité]** → `["Zuruï"]`', lines[0])
-        self.assertIn("**Âge** : `[1 an]`", lines[1])
+        self.assertTrue(lines[0].startswith("🪪"))
+        self.assertIn("**Identité :** `Zuruï`", lines[0])
+        self.assertIn("**Âge :** `1 an`", lines[1])
 
     def test_entry_remplace_les_valeurs_vides(self):
-        self.assertIn('**[Race]** → `["Non renseigné"]`', theme.entry("race", "Race", ""))
+        self.assertIn("**Race :** `Non renseigné`", theme.entry("race", "Race", ""))
 
     def test_entry_neutralise_les_apostrophes_inversees_de_la_valeur(self):
         rendered = theme.entry("race", "Race", "Fle`au")
 
         self.assertEqual(rendered.count("`"), 2)
         self.assertIn("Fle’au", rendered)
-
-    def test_entry_unique_peut_porter_le_coude(self):
-        self.assertTrue(theme.entry("race", "Race", "Fléau", last=True).startswith("╰ ·"))
-        self.assertTrue(theme.entry("race", "Race", "Fléau").startswith("│ ·"))
 
     def test_blocks_separe_par_une_ligne_vide(self):
         blob = theme.blocks("a", None, "b")
@@ -68,6 +63,23 @@ class ThemeRenderingTests(unittest.TestCase):
         self.assertTrue(rendered.startswith("```"))
         self.assertTrue(rendered.endswith("```"))
         self.assertIn("ligne 1\nligne 2", rendered)
+
+    def test_mono_table_aligne_les_colonnes(self):
+        rendered = theme.mono_table(
+            [("Force", "10", "▰▱▱▱▱▱▱▱▱▱"), ("Résistance", "8", "▰▱▱▱▱▱▱▱▱▱")]
+        )
+
+        self.assertTrue(rendered.startswith("```"))
+        lines = rendered.strip("`").strip().splitlines()
+        self.assertEqual(lines[0].index("10"), lines[1].index("8 "))
+        self.assertEqual(lines[0].index("▰"), lines[1].index("▰"))
+
+    def test_mono_table_vide(self):
+        self.assertEqual(theme.mono_table([]), "")
+
+    def test_fallback_renvoie_le_repli_unicode(self):
+        self.assertEqual(theme.fallback("profil"), "📛")
+        self.assertEqual(theme.fallback("cle_inconnue"), "❔")
 
     def test_quote_block_avec_et_sans_citation(self):
         self.assertIn("Aucune citation", theme.quote_block(""))

@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from jjkbot import permissions, theme
+from jjkbot import emojis as emojis_module, permissions, theme
 from jjkbot.storage.profiles import get_profile, save_profile
 from jjkbot.views import competences as competences_views
 
@@ -48,6 +48,7 @@ class CompetencesCog(
             return
 
         embed = competences_views.build_overview_embed(profile, target, interaction.guild)
+        await emojis_module.ensure_loaded(interaction.guild)
         await interaction.response.send_message(
             embeds=theme.with_banner(embed),
             view=competences_views.OverviewView(interaction.guild_id, target),
@@ -70,6 +71,7 @@ class CompetencesCog(
             return
 
         view = competences_views.ShopView(interaction.guild_id, interaction.user.id, profile)
+        await emojis_module.ensure_loaded(interaction.guild)
         await interaction.response.send_message(
             embeds=theme.with_banner(
                 competences_views.build_shop_root_embed(profile, interaction.guild)

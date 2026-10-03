@@ -48,26 +48,23 @@ def build_overview_embed(
     target_user: discord.abc.User,
     guild: discord.Guild | None = None,
 ) -> discord.Embed:
-    """Vue d’ensemble : progression par catégorie."""
-    lines = []
-    for index, branch in enumerate(BRANCHES):
+    """Vue d’ensemble : progression par catégorie dans un tableau monospace."""
+    rows = []
+    for branch in BRANCHES:
         skills = get_skills_for_branch(branch)
         unlocked = sum(1 for skill in skills if skill.id in profile.unlocked_skills)
-        bar = theme.progress_bar(unlocked, len(skills))
-        lines.append(
-            theme.entry(
-                "categorie",
+        rows.append(
+            (
                 branch,
-                f"{unlocked} / {len(skills)} • {bar}",
-                guild=guild,
-                last=index == len(BRANCHES) - 1,
+                f"{unlocked}/{len(skills)}",
+                theme.progress_bar(unlocked, len(skills)),
             )
         )
 
     embed = discord.Embed(
         colour=theme.color(theme.SECTION_COMPETENCES),
-        title=theme.title("competences", "Compétences", guild, suffix=f": {target_user.display_name}"),
         description=theme.blocks(
+            theme.title("competences", "Compétences", guild, suffix=f" : {target_user.display_name}"),
             theme.highlight("xp", f"XP disponible — **{profile.experience}**", guild),
             theme.highlight(
                 "debloque",
@@ -75,7 +72,7 @@ def build_overview_embed(
                 guild,
             ),
             theme.divider(),
-            "\n".join(lines),
+            theme.mono_table(rows),
         ),
     )
     embed.set_footer(text="✦ Choisis une catégorie dans le menu pour afficher ses paliers.")
@@ -94,19 +91,19 @@ def build_category_embed(
     unlocked = sum(1 for skill in skills if skill.id in profile.unlocked_skills)
 
     lines = []
-    for index, skill in enumerate(skills):
+    for skill in skills:
         key, _is_unlocked, _is_available = _skill_status(profile, skill)
-        line = theme.entry(key, skill.label, f"{skill.cost} XP", guild=guild, last=index == len(skills) - 1)
+        line = theme.entry(key, skill.label, f"{skill.cost} XP", guild=guild)
         missing = get_missing_prerequisites(skill.id, profile.unlocked_skills)
         if missing and skill.id not in profile.unlocked_skills:
             names = ", ".join(prerequisite.label for prerequisite in missing)
-            line += f"\n　　↳ {_truncate(names, 80)}"
+            line += f"\n　　↳ *Prérequis : {_truncate(names, 80)}*"
         lines.append(line)
 
     embed = discord.Embed(
         colour=theme.color(theme.SECTION_COMPETENCES),
-        title=theme.title("competences", branch, guild),
         description=theme.blocks(
+            theme.title("competences", branch, guild),
             theme.highlight("xp", f"XP disponible — **{profile.experience}**", guild),
             theme.highlight(
                 "progression",
@@ -168,8 +165,10 @@ def build_shop_root_embed(
 
     embed = discord.Embed(
         colour=theme.color(theme.SECTION_PANIER),
-        title=theme.title("panier", "Panier de compétences", guild),
-        description=description,
+        description=theme.blocks(
+            theme.title("panier", "Panier de compétences", guild),
+            description,
+        ),
     )
     embed.set_footer(text="✦ La confirmation recalcule le coût et les prérequis avant l’achat.")
     return embed
@@ -206,8 +205,10 @@ def build_shop_category_embed(
 
     embed = discord.Embed(
         colour=theme.color(theme.SECTION_PANIER),
-        title=theme.title("panier", branch, guild),
-        description=description,
+        description=theme.blocks(
+            theme.title("panier", branch, guild),
+            description,
+        ),
     )
     embed.set_footer(text="✦ Les prérequis sont revérifiés à la confirmation.")
     return embed
@@ -224,8 +225,8 @@ def build_basket_embed(
 
     embed = discord.Embed(
         colour=theme.color(theme.SECTION_PANIER),
-        title=theme.title("panier", "Confirmation du panier", guild),
         description=theme.blocks(
+            theme.title("panier", "Confirmation du panier", guild),
             theme.highlight("xp", f"XP disponible — **{profile.experience}**", guild),
             theme.highlight("points", f"Coût total — **{total} XP**", guild),
             f"{theme.emoji('valider' if affordable else 'erreur', guild)} "

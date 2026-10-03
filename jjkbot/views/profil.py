@@ -6,7 +6,7 @@ import logging
 
 import discord
 
-from jjkbot import sessions, theme
+from jjkbot import emojis as emojis_module, sessions, theme
 from jjkbot.content.stats import DEFAULT_STATS, STAT_DEFINITIONS
 from jjkbot.storage import images
 from jjkbot.storage.profiles import (
@@ -61,18 +61,20 @@ def build_profile_embeds(
     if page == "global":
         embed = discord.Embed(
             colour=theme.color(section),
-            title=theme.title("profil", "Profil", guild, suffix=f": @{target_user.display_name}"),
             description=theme.blocks(
+                theme.title("profil", "Profil", guild, suffix=f" : @{target_user.display_name}"),
                 theme.group(
                     ("identite", "Identité", profile.name),
-                    ("age", "Âge", profile.age, "colon"),
+                    ("age", "Âge", profile.age),
                     guild=guild,
                 ),
+                theme.divider(),
                 theme.group(
                     ("race", "Race", profile.race),
                     ("grade", "Grade", profile.grade),
                     guild=guild,
                 ),
+                theme.divider(),
                 theme.group(
                     ("alignement", "Alignement", profile.alignment),
                     ("role", "Rôle", profile.role),
@@ -83,36 +85,36 @@ def build_profile_embeds(
         )
     elif page == "stats":
         total = sum(profile.stats.get(stat.id, 0) for stat in STAT_DEFINITIONS)
+        # Tableau aligné dans un bloc de code : les replis unicode seulement,
+        # car les emojis custom ne sont pas rendus à l’intérieur d’un ```.
+        table = theme.mono_table(
+            (
+                stat.label,
+                str(profile.stats.get(stat.id, 0)),
+                theme.progress_bar(profile.stats.get(stat.id, 0), total or 1),
+            )
+            for stat in STAT_DEFINITIONS
+        )
         embed = discord.Embed(
             colour=theme.color(section),
-            title=theme.title("stats", "Statistiques", guild, suffix=f": {profile.name}"),
             description=theme.blocks(
-                theme.heading("Vue d’ensemble", 2, guild, "stats"),
+                theme.title("stats", "Statistiques", guild, suffix=f" : {profile.name}"),
                 theme.highlight("points", f"Points à attribuer — **{profile.stat_points}**", guild),
                 theme.highlight("progression", f"Total réparti — **{total}** point(s)", guild),
+                theme.divider(),
+                table,
             ),
         )
-        for stat in STAT_DEFINITIONS:
-            embed.add_field(
-                name=f"{theme.emoji(stat.emoji, guild)} {stat.label}",
-                value=f"`{profile.stats.get(stat.id, 0)}`",
-                inline=True,
-            )
     else:
         embed = discord.Embed(
             colour=theme.color(section),
-            title=theme.title("page_traits", "Traits & défauts", guild, suffix=f": {profile.name}"),
-            description=theme.divider(),
-        )
-        embed.add_field(
-            name=f"{theme.emoji('debloque', guild)} Traits",
-            value=theme.bullet_list(profile.traits)[:1024],
-            inline=True,
-        )
-        embed.add_field(
-            name=f"{theme.emoji('alerte', guild)} Défauts",
-            value=theme.bullet_list(profile.flaws)[:1024],
-            inline=True,
+            description=theme.blocks(
+                theme.title("page_traits", "Traits & défauts", guild, suffix=f" : {profile.name}"),
+                theme.heading(f"{theme.emoji('debloque', guild)} Traits", 3, guild),
+                theme.bullet_list(profile.traits),
+                theme.heading(f"{theme.emoji('alerte', guild)} Défauts", 3, guild),
+                theme.bullet_list(profile.flaws),
+            ),
         )
 
     embed.set_author(name=target_user.display_name, icon_url=target_user.display_avatar.url)
@@ -154,6 +156,10 @@ async def build_profile_message(
     guild_id: int | None = None,
 ) -> tuple[list[discord.Embed], list[discord.File]]:
     """Embeds et fichiers prêts à être envoyés."""
+    # Filet de sécurité : si le cache des emojis est vide (ancien déploiement
+    # sans intent, ou emoji créé juste avant un redémarrage), on va le chercher
+    # via l’API REST avant de rendre.
+    await emojis_module.ensure_loaded(guild)
     embeds = build_profile_embeds(profile, target_user, page, guild)
     files: list[discord.File] = []
 

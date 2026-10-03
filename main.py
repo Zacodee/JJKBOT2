@@ -88,10 +88,21 @@ class JJKBot(commands.Bot):
 
         missing = emojis_module.emojis.missing_keys(self.guilds[0] if self.guilds else None)
         if missing:
+            names = ", ".join(
+                emojis_module.emojis.catalog[key].name for key in missing if key in emojis_module.emojis.catalog
+            )
             logger.info(
-                "%d emoji(s) custom manquant(s) : les emojis unicode de secours sont utilisés "
-                "(voir /jjk emojis).",
+                "%d emoji(s) custom manquant(s) : %s — les replis unicode sont utilisés "
+                "en attendant (/jjk emojis pour le détail).",
                 len(missing),
+                names or "?",
+            )
+        if not emojis_module.emojis.index_count() and self.guilds:
+            logger.warning(
+                "Aucun emoji custom indexé alors que le bot est sur %d serveur(s) : "
+                "l’intent « emojis » est peut-être inactif ou le code déployé est ancien. "
+                "Les commandes tenteront une réparation via l’API REST.",
+                len(self.guilds),
             )
 
         if self.sync_only:

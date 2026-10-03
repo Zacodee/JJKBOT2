@@ -93,13 +93,28 @@ def partial_emoji(key: str, guild=None) -> discord.PartialEmoji | None:
     return emojis.as_partial(key, guild)
 
 
+def fallback(key: str) -> str:
+    """Emoji unicode de secours d’une clé, insérable dans un bloc de code.
+
+    À l’intérieur d’un ``` les emojis custom du serveur ne sont PAS rendus
+    (ils s’affichent en texte brut `<:nom:id>`) : on y met donc toujours le
+    repli unicode, qui reste lisible en monospace.
+    """
+    return emojis.fallback(key)
+
+
 # --- Mise en forme -----------------------------------------------------------
 
 
 def title(key: str, label: str, guild=None, suffix: str | None = None) -> str:
-    """Titre d’embed : `📛 — __Profil__ : @joueur`."""
-    heading = f"{emoji(key, guild)} — __{label}__"
-    return f"{heading} {suffix}".strip() if suffix else heading
+    """Ligne de titre en Markdown : `## 📛 Profil : @joueur`.
+
+    Discord ne rend AUCUN Markdown dans le champ `title` d’un embed (les
+    `__`, `**` ou `##` s’afficheraient tels quels) : le vrai titre stylé est
+    donc cette ligne `##` à placer en tête de la **description**, où les
+    titres, le gras et les emojis custom sont rendus.
+    """
+    return heading(f"{label}{suffix or ''}", 2, guild, key)
 
 
 def entry(
@@ -107,39 +122,27 @@ def entry(
     label: str,
     value,
     guild=None,
-    style: str = "arrow",
-    last: bool = False,
 ) -> str:
-    """Une ligne d’information, dans le style de la fiche de référence.
+    """Une ligne d’information au style Discord : `🪪 **Identité :** `Zuruï``.
 
-    Le libellé est en **gras** et la valeur en `code` : c’est ce contraste de
-    graisse et de police qui donne à la fiche sa hiérarchie visuelle.
-
-    - `style="arrow"` : `│ · 🪪 **[Identité]** → `["Zuruï"]``
-    - `style="colon"` : `╰ · ⏳ **Âge** : `[1 an]``
+    Le libellé est en **gras** et la valeur entre accents graves (`code`) :
+    c’est ce contraste de graisse et de police qui donne à la fiche sa
+    hiérarchie visuelle, exactement comme dans les messages Discord manuels.
     """
-    prefix = "╰ ·" if last else "│ ·"
     text = str(value).strip() if value is not None and str(value).strip() else "Non renseigné"
     glyph = emoji(key, guild)
     # Une apostrophe inversée saisie par un joueur casserait la mise en forme.
     clean = text.replace("`", "\u2019")
-
-    if style == "colon":
-        return f"{prefix} {glyph} **{label}** : `[{clean}]`"
-    return f'{prefix} {glyph} **[{label}]** → `["{clean}"]`'
+    return f"{glyph} **{label} :** `{clean}`"
 
 
 def group(*specs, guild=None) -> str:
-    """Assemble un bloc de lignes : la dernière porte `╰`, les autres `│`.
+    """Assemble plusieurs lignes `entry` en un bloc.
 
-    Chaque spécification est un tuple `(clé_emoji, libellé, valeur)` ou
-    `(clé_emoji, libellé, valeur, style)`.
+    Chaque spécification est un tuple `(clé_emoji, libellé, valeur)` ; un
+    quatrième élément éventuel est ignoré (compatibilité avec l’ancien style).
     """
-    lines: list[str] = []
-    for index, spec in enumerate(specs):
-        key, label, value = spec[0], spec[1], spec[2]
-        style = spec[3] if len(spec) > 3 else "arrow"
-        lines.append(entry(key, label, value, guild=guild, style=style, last=index == len(specs) - 1))
+    lines = [entry(spec[0], spec[1], spec[2], guild=guild) for spec in specs]
     return "\n".join(lines)
 
 
@@ -178,10 +181,28 @@ def code_block(lines, language: str = "") -> str:
     """Bloc de code Markdown (triple accent grave), idéal pour un tableau aligné.
 
     À l’intérieur, ni le gras, ni l’italique, ni les emojis custom ne sont
-    rendus : réserve-le aux données brutes.
+    rendus : réserve-le aux données brutes (chiffres, barres, colonnes).
     """
     body = "\n".join(str(line) for line in lines)
     return f"```{language}\n{body}\n```"
+
+
+def mono_table(rows) -> str:
+    """Tableau de colonnes alignées, rendu dans un bloc de code.
+
+    Chaque ligne est une séquence de cellules ; les colonnes sont calées sur
+    la cellule la plus large. En monospace, les barres et les chiffres
+    s’alignent parfaitement, comme un tableau dessiné à la main.
+    """
+    rows = [tuple(str(cell) for cell in row) for row in rows]
+    if not rows:
+        return ""
+    width = [max(len(row[column]) for row in rows) for column in range(len(rows[0]))]
+    lines = [
+        "  ".join(cell.ljust(width[column]) for column, cell in enumerate(row)).rstrip()
+        for row in rows
+    ]
+    return code_block(lines)
 
 
 def divider() -> str:

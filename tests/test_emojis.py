@@ -5,7 +5,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import discord
+
 from jjkbot.emojis import DEFAULT_CATALOG, EmojiResolver, load_catalog
+
+
+class _FakeResponse:
+    """Remplaçant minimal d’une réponse HTTP pour discord.HTTPException."""
+
+    status = 500
+    reason = "Internal Server Error"
 
 
 class FakeEmoji:
@@ -153,6 +162,68 @@ class EmojiResolverTests(unittest.TestCase):
         self.assertEqual(self.resolver.index_count(), 0)
         self.resolver.refresh([self.guild])
         self.assertEqual(self.resolver.index_count(), 2)
+
+
+class EmojiRepairTests(unittest.IsolatedAsyncioTestCase):
+    """Filet de sécurité : réparation du cache vide via l’API REST."""
+
+    def test_fallback_renvoie_le_repli_unicode(self):
+        resolver = EmojiResolver(dict(DEFAULT_CATALOG))
+
+        self.assertEqual(resolver.fallback("profil"), "📛")
+        self.assertEqual(resolver.fallback("inconnu"), "❔")
+
+    async def test_ensure_loaded_repare_un_cache_vide(self):
+        resolver = EmojiResolver(dict(DEFAULT_CATALOG))
+        guild = FakeGuild(42, [])
+        calls = []
+
+        async def fetch_emojis():
+            calls.append(1)
+            return [FakeEmoji("jjk_profil", 555)]
+
+        guild.fetch_emojis = fetch_emojis
+
+        await resolver.ensure_loaded(guild)
+
+        self.assertEqual(calls, [1])
+        self.assertEqual(resolver.get("profil", guild), "<:jjk_profil:555>")
+
+    async def test_ensure_loaded_est_silencieux_avec_un_cache_peuple(self):
+        resolver = EmojiResolver(dict(DEFAULT_CATALOG))
+        guild = FakeGuild(42, [FakeEmoji("jjk_profil", 555)])
+        calls = []
+
+        async def fetch_emojis():
+            calls.append(1)
+            return []
+
+        guild.fetch_emojis = fetch_emojis
+
+        await resolver.ensure_loaded(guild)
+
+        self.assertEqual(calls, [])
+        self.assertEqual(resolver.get("profil", guild), "<:jjk_profil:555>")
+
+    async def test_ensure_loaded_sans_serveur_ne_leve_pas(self):
+        resolver = EmojiResolver(dict(DEFAULT_CATALOG))
+
+        await resolver.ensure_loaded(None)
+
+        self.assertEqual(resolver.index_count(), 0)
+
+    async def test_ensure_loaded_tolere_une_erreur_http(self):
+        resolver = EmojiResolver(dict(DEFAULT_CATALOG))
+        guild = FakeGuild(42, [])
+
+        async def fetch_emojis():
+            raise discord.HTTPException(_FakeResponse(), "boom")
+
+        guild.fetch_emojis = fetch_emojis
+
+        await resolver.ensure_loaded(guild)
+
+        self.assertEqual(resolver.get("profil", guild), "📛")
 
 
 if __name__ == "__main__":  # pragma: no cover

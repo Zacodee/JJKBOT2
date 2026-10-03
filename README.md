@@ -2,7 +2,9 @@
 
 Bot Discord **Python** dédié au support d’un serveur de roleplay écrit francophone.
 Fiches de personnage, statistiques, arbre de compétences et guide des nouveaux membres,
-présentés dans des embeds sobres et carrés qui utilisent les **emojis du serveur**.
+présentés dans des embeds mis en forme **avec le Markdown Discord** : titres `##`,
+libellés en **gras**, valeurs en `code` et tableaux alignés dans des blocs `````.
+Tous les éléments de l’interface utilisent les **emojis du serveur**.
 
 ## Prérequis
 
@@ -82,6 +84,14 @@ statistiques, panier, boutons…) possède une clé reliée à un **emoji custom
 > les emojis retombent sur le repli unicode. L’intent `emojis` n’est pas privilégié,
 > rien à cocher dans le portail développeur. Après un ajout d’emoji pendant que le bot
 > tourne, relance `/jjk emojis` (le diagnostic rafraîchit le catalogue) ou redémarre le bot.
+>
+> **Filet de sécurité** : si le cache passerelle est vide (intent inactif ou ancien
+> déploiement), le bot récupère désormais les emojis via l’**API REST**
+> (`GET /guilds/{id}/emojis`), qui fonctionne même sans cet intent — au plus une fois
+> toutes les 5 minutes par serveur. Au démarrage, la ligne de log
+> `Emojis : intent actif=… • N emoji(s) custom indexé(s)` doit afficher `True` et le
+> nombre d’emojis de ton serveur : si `intent actif=False` s’affiche, l’ancien code
+> tourne encore, redéploie.
 
 ## Commandes
 
