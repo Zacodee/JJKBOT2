@@ -93,3 +93,9 @@ DATA_FILE: Path = ROOT_DIR / "data" / "profiles.json"
 IMAGES_DIR: Path = ROOT_DIR / "data" / "images"
 EMOJIS_FILE: Path = ROOT_DIR / "config" / "emojis.json"
 ASSETS_DIR: Path = ROOT_DIR / "assets"
+
+# Image de bannière servie LOCALEMENT (attachment://) : elle vit dans le dépôt
+# et n’expire jamais, contrairement aux URL de CDN Discord, qui sont signées
+# et valables seulement quelques heures. `BANNER_URL` reste possible en repli
+# si ce fichier est absent (voir theme.banner_embed).
+BANNER_PATH: Path = ASSETS_DIR / "banniere_jjk.png"

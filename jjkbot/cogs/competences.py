@@ -49,8 +49,11 @@ class CompetencesCog(
 
         embed = competences_views.build_overview_embed(profile, target, interaction.guild)
         await emojis_module.ensure_loaded(interaction.guild)
+        files: list[discord.File] = []
+        embeds = theme.with_banner(embed, files)
         await interaction.response.send_message(
-            embeds=[embed],
+            embeds=embeds,
+            files=files,
             view=competences_views.OverviewView(interaction.guild_id, target),
         )
 
@@ -72,10 +75,13 @@ class CompetencesCog(
 
         view = competences_views.ShopView(interaction.guild_id, interaction.user.id, profile)
         await emojis_module.ensure_loaded(interaction.guild)
+        files: list[discord.File] = []
+        embeds = theme.with_banner(
+            competences_views.build_shop_root_embed(profile, interaction.guild), files
+        )
         await interaction.response.send_message(
-            embeds=[
-                competences_views.build_shop_root_embed(profile, interaction.guild)
-            ],
+            embeds=embeds,
+            files=files,
             view=view,
             ephemeral=True,
         )

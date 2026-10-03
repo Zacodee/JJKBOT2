@@ -154,9 +154,9 @@ class JjkCog(
     @app_commands.guild_only()
     async def help(self, interaction: discord.Interaction) -> None:
         await emojis_module.ensure_loaded(interaction.guild)
-        await interaction.response.send_message(
-            embeds=[build_help_embed(interaction.guild)]
-        )
+        files: list[discord.File] = []
+        embeds = theme.with_banner(build_help_embed(interaction.guild), files)
+        await interaction.response.send_message(embeds=embeds, files=files)
 
     @app_commands.command(name="emojis", description="Vérifier les emojis du serveur utilisés par le bot")
     @app_commands.guild_only()
@@ -168,10 +168,9 @@ class JjkCog(
         # dresse l’état du catalogue : aucun refresh brutal qui écraserait la réparation.
         await emojis_module.ensure_loaded(interaction.guild)
         rows = emojis_module.emojis.status(interaction.guild)
-        await interaction.response.send_message(
-            embed=build_emoji_report_embed(interaction.guild, rows),
-            ephemeral=True,
-        )
+        files: list[discord.File] = []
+        embeds = theme.with_banner(build_emoji_report_embed(interaction.guild, rows), files)
+        await interaction.response.send_message(embeds=embeds, files=files, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

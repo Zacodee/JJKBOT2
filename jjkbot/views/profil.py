@@ -59,46 +59,46 @@ def build_profile_embeds(
     }[page]
 
     if page == "global":
+        # Trois lignes de deux champs au lieu d’un libellé-titre + une valeur
+        # par champ : la première page reste complète mais tient en six lignes.
         embed = discord.Embed(
             colour=theme.color(section),
             description=theme.blocks(
                 theme.title("profil", "Profil", guild, suffix=f" : @{target_user.display_name}"),
-                theme.group(
-                    ("identite", "Identité", profile.name),
-                    ("age", "Âge", profile.age),
-                    guild=guild,
-                ),
-                theme.divider(),
-                theme.group(
-                    ("race", "Race", profile.race),
-                    ("grade", "Grade", profile.grade),
-                    guild=guild,
-                ),
-                theme.divider(),
-                theme.group(
-                    ("alignement", "Alignement", profile.alignment),
-                    ("role", "Rôle", profile.role),
-                    guild=guild,
+                "\n".join(
+                    (
+                        theme.row(
+                            ("identite", "Identité", profile.name),
+                            ("age", "Âge", profile.age),
+                            guild=guild,
+                        ),
+                        theme.row(
+                            ("race", "Race", profile.race),
+                            ("grade", "Grade", profile.grade),
+                            guild=guild,
+                        ),
+                        theme.row(
+                            ("alignement", "Alignement", profile.alignment),
+                            ("role", "Rôle", profile.role),
+                            guild=guild,
+                        ),
+                    )
                 ),
                 theme.quote_block(profile.quote, guild),
             ),
         )
     elif page == "stats":
         total = sum(profile.stats.get(stat.id, 0) for stat in STAT_DEFINITIONS)
-        # Tableau aligné dans un bloc de code, avec l’emoji de chaque stat en
-        # tête de ligne. Dans un ``` seuls les replis unicode sont utilisés :
-        # les emojis custom du serveur ne sont pas rendus à l’intérieur.
-        label_width = max(len(stat.label) for stat in STAT_DEFINITIONS)
-        value_width = max(len(str(profile.stats.get(stat.id, 0))) for stat in STAT_DEFINITIONS)
-        rows = []
+        # Une ligne par statistique, HORS bloc de code : Discord ne rend les
+        # emojis custom du serveur que dans le texte normal — dans un ```
+        # ils s’afficheraient en texte brut, d’où l’emoji de repli imposé.
+        lines = []
         for stat in STAT_DEFINITIONS:
             value = profile.stats.get(stat.id, 0)
-            rows.append(
-                f"{theme.fallback(stat.emoji)}  {stat.label.ljust(label_width)}  "
-                f"{str(value).rjust(value_width)}  "
+            lines.append(
+                f"{theme.entry(stat.emoji, stat.label, value, guild=guild)} "
                 f"{theme.progress_bar(value, total or 1)}"
             )
-        table = theme.code_block(rows)
         embed = discord.Embed(
             colour=theme.color(section),
             description=theme.blocks(
@@ -106,7 +106,7 @@ def build_profile_embeds(
                 theme.highlight("points", f"Points à attribuer — **{profile.stat_points}**", guild),
                 theme.highlight("progression", f"Total réparti — **{total}** point(s)", guild),
                 theme.divider(),
-                table,
+                "\n".join(lines),
             ),
         )
     else:
@@ -127,9 +127,8 @@ def build_profile_embeds(
     if timestamp is not None:
         embed.timestamp = timestamp
 
-    # Pas de bannière au-dessus de la fiche : le visuel « Jujutsu Kaisen » a
-    # été retiré à la demande (le mécanisme theme.with_banner reste dispo
-    # pour en afficher une nouvelle).
+    # La bannière n’est pas ajoutée ici : c’est build_profile_message qui
+    # encadre la réponse (bannière, fiche, bannière) et joint l’image locale.
     return [embed]
 
 
@@ -162,7 +161,12 @@ async def build_profile_message(
     guild: discord.Guild | None = None,
     guild_id: int | None = None,
 ) -> tuple[list[discord.Embed], list[discord.File]]:
-    """Embeds et fichiers prêts à être envoyés."""
+    """Embeds et fichiers prêts à être envoyés.
+
+    La réponse est encadrée par la bannière : embed de bannière en tête,
+    fiche au milieu, même bannière en pied — l’image locale n’étant jointe
+    qu’une seule fois au message (`files`).
+    """
     # Filet de sécurité : si le cache des emojis est vide (ancien déploiement
     # sans intent, ou emoji créé juste avant un redémarrage), on va le chercher
     # via l’API REST avant de rendre.
@@ -170,8 +174,10 @@ async def build_profile_message(
     embeds = build_profile_embeds(profile, target_user, page, guild)
     files: list[discord.File] = []
 
+    # L’image du personnage est jointe AVANT la bannière : la présence d’une
+    # image se juge sur les seuls fichiers du personnage.
+    content = embeds[-1]
     if page == "global" and guild_id is not None:
-        content = embeds[-1]
         _attach_character_image(content, profile, guild_id, target_user.id, files)
         if not files and not profile.image_url:
             content.add_field(
@@ -180,7 +186,7 @@ async def build_profile_message(
                 inline=False,
             )
 
-    return embeds, files
+    return theme.with_banner(content, files), files
 
 
 class ProfileView(BaseView):

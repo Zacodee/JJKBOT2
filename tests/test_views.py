@@ -26,6 +26,25 @@ class FakeUser:
         return "<@2>"
 
 
+class FakeEmoji:
+    """Emoji de serveur factice, rendu comme Discord le ferait."""
+
+    def __init__(self, name: str, emoji_id: int, animated: bool = False):
+        self.name = name
+        self.id = emoji_id
+        self.animated = animated
+
+    def __str__(self) -> str:
+        return f"<{'a' if self.animated else ''}:{self.name}:{self.id}>"
+
+
+class FakeGuild:
+    """Serveur factice n’ayant que deux emojis custom (force et vitesse)."""
+
+    id = 4242
+    emojis = [FakeEmoji("jjk_force", 111), FakeEmoji("jjk_vitesse", 222)]
+
+
 def make_profile(**overrides) -> Profile:
     data = {
         "name": "Zuruï",
@@ -66,36 +85,53 @@ class ProfileEmbedTests(unittest.TestCase):
     def tearDown(self):
         self.patch.stop()
 
-    def test_page_profil_contient_les_huit_champs(self):
+    def test_page_profil_tient_en_six_lignes(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "global", None)[0]
 
-        # Le titre stylé vit désormais dans la description (seul endroit où
-        # Discord rend le Markdown), pas dans embed.title.
+        # Le titre stylé vit dans la description (seul endroit où Discord
+        # rend le Markdown), pas dans embed.title.
         self.assertIsNone(embed.title)
         self.assertTrue(embed.description.startswith("## 📛"))
         self.assertIn("@Izouk", embed.description)
-        # Chaque classe d’info est un petit titre souligné, valeur en `code`.
-        self.assertIn("### 🪪 __Identité__", embed.description)
-        self.assertIn("`Zuruï`", embed.description)
-        self.assertIn("### ⏳ __Âge__", embed.description)
-        self.assertIn("`1 an`", embed.description)
+        # Deux champs par ligne : libellé en gras, valeur en `code`, joints
+        # par un point — la fiche complète tient en six lignes.
+        self.assertIn("**Identité :** `Zuruï`", embed.description)
+        self.assertIn("**Âge :** `1 an`", embed.description)
+        self.assertIn("**Race :** `Fléau`", embed.description)
+        self.assertIn("**Grade :** `Spécial`", embed.description)
         self.assertIn("Chaotique mauvais", embed.description)
+        self.assertNotIn("###", embed.description)
+        self.assertLessEqual(len(embed.description.splitlines()), 7)
         self.assertIn("citation", embed.description.lower())
         self.assertIn("Page 1 / 3", embed.footer.text)
 
-    def test_page_statistiques_en_bloc_de_code(self):
+    def test_page_statistiques_sans_bloc_de_code(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "stats", None)[0]
 
         self.assertEqual(len(embed.fields), 0)
         self.assertIn("## 📊", embed.description)
         self.assertIn("Points à attribuer", embed.description)
-        self.assertIn("```", embed.description)
+        # Plus de bloc de code : Discord n’y rend pas les emojis custom.
+        self.assertNotIn("```", embed.description)
         for label in ("Force", "Résistance", "Vitesse", "Réserve d'EO", "Sortie d'EO"):
             self.assertIn(label, embed.description)
-        # L’emoji (repli unicode) ouvre chaque ligne devant la barre.
+        # Sans serveur, chaque ligne ouvre sur l’emoji unicode de repli.
         for glyph in ("⚔️", "🛡️", "💨", "🔮", "🌀"):
             self.assertIn(glyph, embed.description)
         self.assertIn("Page 2 / 3", embed.footer.text)
+
+    def test_page_statistiques_utilise_les_emojis_du_serveur(self):
+        # Le bug corrigé : sur le serveur, l’emoji custom remplace le repli
+        # (jjk_force pour Force, jjk_vitesse pour Vitesse).
+        embed = profil_views.build_profile_embeds(
+            make_profile(), FakeUser(), "stats", FakeGuild()
+        )[0]
+
+        self.assertIn("<:jjk_force:111>", embed.description)
+        self.assertIn("<:jjk_vitesse:222>", embed.description)
+        # Les autres statistiques n’ont pas d’emoji custom : repli unicode.
+        self.assertIn("🛡️", embed.description)
+        self.assertNotIn("```", embed.description)
 
     def test_page_traits_et_defauts(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "traits", None)[0]
@@ -112,26 +148,66 @@ class ProfileEmbedTests(unittest.TestCase):
 
         self.assertTrue(embed.description.startswith("## 📛"))
 
-    def test_banniere_plus_affichee_meme_si_configuree(self):
-        with unittest.mock.patch.object(config, "BANNER_URL", "https://exemple.test/b.png"):
-            embeds = profil_views.build_profile_embeds(make_profile(), FakeUser(), "global", None)
 
-        # Le visuel « Jujutsu Kaisen » a été retiré à la demande : la fiche
-        # tient en un seul embed même quand une bannière est configurée.
-        self.assertEqual(len(embeds), 1)
+class ProfileBannerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_banniere_encadre_chaque_page_de_la_fiche(self):
+        # Chaque page est encadrée : bannière, fiche, même bannière en pied.
+        for page in ("global", "stats", "traits"):
+            with self.subTest(page=page):
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "banniere_jjk.png"
+                    path.write_bytes(b"image")
+                    with unittest.mock.patch.object(config, "BANNER_PATH", path), (
+                        unittest.mock.patch.object(config, "BANNER_URL", None)
+                    ):
+                        embeds, files = await profil_views.build_profile_message(
+                            make_profile(), FakeUser(), page, None, 2
+                        )
+
+                    self.assertEqual(len(embeds), 3)
+                    self.assertEqual(embeds[0].image.url, "attachment://banniere_jjk.png")
+                    self.assertEqual(embeds[2].image.url, "attachment://banniere_jjk.png")
+                    # L’image locale n’est jointe qu’une fois pour les deux bannières.
+                    self.assertEqual(len(files), 1)
+                    for file in files:
+                        file.close()
+
+    async def test_banniere_absente_sans_image_ni_url(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "banniere_jjk.png"
+            with unittest.mock.patch.object(config, "BANNER_PATH", missing):
+                with unittest.mock.patch.object(config, "BANNER_URL", None):
+                    embeds, files = await profil_views.build_profile_message(
+                        make_profile(), FakeUser(), "stats", None, 2
+                    )
+
+            self.assertEqual(len(embeds), 1)
+            self.assertEqual(files, [])
 
 
 class ProfileImageTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
+        self.banner_patches = [
+            # Bannière retirée ici : ces tests ne mesurent que l’image du
+            # personnage, pas l’encadrement du message.
+            unittest.mock.patch.object(
+                config, "BANNER_PATH", Path(self.directory.name) / "banniere_jjk.png"
+            ),
+            unittest.mock.patch.object(config, "BANNER_URL", None),
+        ]
         self.patch = unittest.mock.patch.object(
             config, "IMAGES_DIR", Path(self.directory.name) / "images"
         )
+        for banner_patch in self.banner_patches:
+            banner_patch.start()
         self.patch.start()
         Path(config.IMAGES_DIR).mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
         self.patch.stop()
+        for banner_patch in self.banner_patches:
+            banner_patch.stop()
         self.directory.cleanup()
 
     async def test_image_locale_jointe_a_la_fiche(self):

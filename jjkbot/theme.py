@@ -7,12 +7,16 @@ séparateurs, citations et bannière. Changer de palette revient à changer
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 import discord
 
 from jjkbot import config
 from jjkbot.emojis import emojis
+
+logger = logging.getLogger(__name__)
 
 # Sections possibles d’un embed.
 SECTION_PROFIL = "profil"
@@ -125,10 +129,9 @@ def entry(
 ) -> str:
     """Une ligne d’information compacte : `🪪 **Identité :** `Zuruï``.
 
-    Style « ligne » réservé aux listes (compétences) : le libellé est en
-    **gras** et la valeur entre accents graves (`code`). Pour les champs
-    d’une fiche, voir `group`/`field_label`, qui les met en valeur avec un
-    titre légèrement plus gros et souligné.
+    Le libellé est en **gras** et la valeur entre accents graves (`code`) :
+    c’est ce contraste de graisse et de police qui donne à une fiche sa
+    hiérarchie visuelle, sans alourdir la mise en page.
     """
     return f"{emoji(key, guild)} **{label} :** {value_code(value)}"
 
@@ -153,19 +156,14 @@ def value_code(value) -> str:
     return f"`{clean}`"
 
 
-def group(*specs, guild=None) -> str:
-    """Assemble plusieurs champs de fiche en un bloc.
+def row(*specs, guild=None) -> str:
+    """Plusieurs champs de fiche sur une MÊME ligne, séparés par « • ».
 
-    Chaque champ devient un libellé-titre souligné suivi de sa valeur en
-    `code` : c’est la hiérarchie « classe d’info visible » des fiches.
-    Chaque spécification est un tuple `(clé_emoji, libellé, valeur)` ; un
-    quatrième élément éventuel est ignoré (compatibilité avec l’ancien style).
+    Version compacte de `group` : deux champs par ligne au lieu d’un libellé
+    + une valeur sur chacune, ce qui allège nettement la première page d’une
+    fiche. Chaque spécification est un tuple `(clé_emoji, libellé, valeur)`.
     """
-    fields = [
-        f"{field_label(spec[0], spec[1], guild)}\n{value_code(spec[2])}"
-        for spec in specs
-    ]
-    return "\n\n".join(fields)
+    return "  •  ".join(entry(spec[0], spec[1], spec[2], guild=guild) for spec in specs)
 
 
 def blocks(*chunks) -> str:
@@ -257,17 +255,70 @@ def bullet_list(entries: list[str], prefix: str = "•") -> str:
 # --- Embeds ------------------------------------------------------------------
 
 
-def banner_embed() -> discord.Embed | None:
-    """Bannière décorative affichée en haut des réponses, si configurée."""
-    if not config.BANNER_URL:
+# --- Bannière ----------------------------------------------------------------
+
+
+def banner_file() -> discord.File | None:
+    """Copie fraîche de l’image de bannière locale.
+
+    Un `discord.File` ne peut être envoyé qu’une seule fois : on en ouvre un
+    nouveau à chaque envoi. Renvoie None si l’image locale est absente.
+    """
+    path = Path(config.BANNER_PATH)
+    if not path.is_file() or path.stat().st_size <= 0:
         return None
-    return discord.Embed(color=color(SECTION_NEUTRE)).set_image(url=config.BANNER_URL)
+    try:
+        return discord.File(path, filename=path.name)
+    except OSError as error:  # pragma: no cover - dépend du disque
+        logger.warning("Image de bannière illisible (%s) : %s", path, error)
+        return None
 
 
-def with_banner(content_embed: discord.Embed) -> list[discord.Embed]:
-    """Liste d’embeds d’une réponse : bannière puis contenu."""
-    banner = banner_embed()
-    return [banner, content_embed] if banner is not None else [content_embed]
+def banner_embed(files: list[discord.File] | None = None) -> discord.Embed | None:
+    """Embed de bannière : image locale en priorité, `BANNER_URL` en repli.
+
+    L’image locale (`assets/banniere_jjk.png`) est jointe au message via
+    `attachment://` : contrairement aux URL de CDN Discord, qui sont signées
+    et expirent en quelques heures, elle n’a pas de date de péremption. Elle
+    est donc prioritaire sur `BANNER_URL`.
+
+    Sans image locale, `BANNER_URL` s’il est configuré s’affiche tel quel.
+    Et si la bannière vient du fichier local mais qu’aucune liste `files`
+    n’est fournie, l’image ne pourrait pas être jointe au message : on
+    renvoie None plutôt que l’embed d’une image qui ne s’afficherait pas
+    (et on n’ouvre jamais le fichier pour rien).
+    """
+    path = Path(config.BANNER_PATH)
+    if path.is_file() and path.stat().st_size > 0:
+        if files is None:
+            return None
+        file = banner_file()
+        if file is None:  # pragma: no cover - le fichier vient d’être vérifié
+            return None
+        files.append(file)
+        return discord.Embed(color=color(SECTION_NEUTRE)).set_image(
+            url=f"attachment://{file.filename}"
+        )
+
+    if config.BANNER_URL:
+        return discord.Embed(color=color(SECTION_NEUTRE)).set_image(url=config.BANNER_URL)
+    return None
+
+
+def with_banner(
+    content_embed: discord.Embed,
+    files: list[discord.File] | None = None,
+) -> list[discord.Embed]:
+    """Embeds d’une réponse : bannière, contenu, bannière (début et fin).
+
+    La bannière encadre le message comme dans le visuel d’origine. Passer
+    `files` permet de joindre l’image locale au message ; sans elle, seule
+    une bannière par `BANNER_URL` (sans fichier) peut s’afficher.
+    """
+    banner = banner_embed(files)
+    if banner is None:
+        return [content_embed]
+    return [banner, content_embed, banner]
 
 
 def notice_embed(

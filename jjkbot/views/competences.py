@@ -335,8 +335,10 @@ class OverviewView(BaseView):
             return
 
         embed = build_category_embed(profile, self.target_user, branch, interaction.guild)
+        files: list[discord.File] = []
         await interaction.response.edit_message(
-            embeds=[embed],
+            embeds=theme.with_banner(embed, files),
+            attachments=files,
             view=OverviewView(self.guild_id, self.target_user, branch),
         )
 
@@ -369,9 +371,13 @@ class ContinueShopView(BaseView):
             return
 
         view = ShopView(self.guild_id, self.user_id, profile)
+        files: list[discord.File] = []
         await interaction.response.edit_message(
             content=None,
-            embeds=[build_shop_root_embed(profile, interaction.guild, basket=view.basket)],
+            embeds=theme.with_banner(
+                build_shop_root_embed(profile, interaction.guild, basket=view.basket), files
+            ),
+            attachments=files,
             view=view,
         )
 
@@ -456,14 +462,23 @@ class ShopView(BaseView):
                 ActionButton(action="cancel", label="Annuler", style=discord.ButtonStyle.secondary, emoji_key="annuler")
             )
 
-    def build_embeds(self, guild) -> list[discord.Embed]:
+    def build_embeds(self, guild) -> tuple[list[discord.Embed], list[discord.File]]:
+        """Embeds de l’étape courante et fichiers à joindre (bannière)."""
         if self.step == "category" and self.branch:
             embed = build_shop_category_embed(self.profile, self.branch, guild, self.basket)
         elif self.step == "basket":
             embed = build_basket_embed(self.profile, self.basket, guild)
         else:
             embed = build_shop_root_embed(self.profile, guild, self.message, self.basket)
-        return [embed]
+        files: list[discord.File] = []
+        return theme.with_banner(embed, files), files
+
+    async def _refresh(self, interaction: discord.Interaction, view=None) -> None:
+        """Réaffiche l’étape courante : bannière, contenu, bannière."""
+        embeds, files = self.build_embeds(interaction.guild)
+        await interaction.response.edit_message(
+            embeds=embeds, attachments=files, view=view if view is not None else self
+        )
 
     # -- Actions ----------------------------------------------------------
 
@@ -474,7 +489,7 @@ class ShopView(BaseView):
         self.step = "category"
         self.message = None
         self.render()
-        await interaction.response.edit_message(embeds=self.build_embeds(interaction.guild), view=self)
+        await self._refresh(interaction)
 
     async def handle_skills(self, interaction: discord.Interaction, branch: str, skill_ids) -> None:
         self.branch = branch
@@ -487,7 +502,7 @@ class ShopView(BaseView):
 
         self.message = None
         self.render()
-        await interaction.response.edit_message(embeds=self.build_embeds(interaction.guild), view=self)
+        await self._refresh(interaction)
 
     async def handle_action(self, interaction: discord.Interaction, action: str) -> None:
         if action == "confirm":
@@ -502,7 +517,7 @@ class ShopView(BaseView):
         self.branch = None
         self.message = None
         self.render()
-        await interaction.response.edit_message(embeds=self.build_embeds(interaction.guild), view=self)
+        await self._refresh(interaction)
 
     async def _cancel(self, interaction: discord.Interaction) -> None:
         self.basket.clear()
@@ -510,7 +525,7 @@ class ShopView(BaseView):
         self.branch = None
         self.message = None
         self.render()
-        await interaction.response.edit_message(embeds=self.build_embeds(interaction.guild), view=self)
+        await self._refresh(interaction)
 
     async def _confirm(self, interaction: discord.Interaction) -> None:
         profile = await get_profile(self.guild_id, self.user_id)
@@ -534,7 +549,7 @@ class ShopView(BaseView):
                 "ou ton XP est insuffisante."
             )
             self.render()
-            await interaction.response.edit_message(embeds=self.build_embeds(interaction.guild), view=self)
+            await self._refresh(interaction)
             return
 
         for skill in skills:
@@ -547,11 +562,13 @@ class ShopView(BaseView):
         self.step = "done"
 
         overview = build_overview_embed(profile, interaction.user, interaction.guild)
+        files: list[discord.File] = []
         await interaction.response.edit_message(
             content=(
                 f"{theme.emoji('succes', interaction.guild)} **{len(skills)}** compétence(s) débloquée(s) "
                 f"pour **{total} XP**. Il te reste **{profile.experience} XP**."
             ),
-            embeds=[overview],
+            embeds=theme.with_banner(overview, files),
+            attachments=files,
             view=ContinueShopView(self.guild_id, self.user_id),
         )

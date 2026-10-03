@@ -3,8 +3,9 @@
 Bot Discord **Python** dédié au support d’un serveur de roleplay écrit francophone.
 Fiches de personnage, statistiques, arbre de compétences et guide des nouveaux membres,
 présentés dans des embeds mis en forme **avec le Markdown Discord** : titres `##`,
-libellés de champ en petit titre souligné (`### __Identité__`), valeurs en `code`,
-et tableaux alignés ouvrant par l’emoji de chaque statistique dans des blocs `````.
+libellés en **gras**, valeurs en `code`, deux champs par ligne sur la fiche et barres
+de progression en fin de statistique. Chaque réponse de contenu est **encadrée par la
+bannière** : embed de bannière en tête, contenu, même bannière en pied.
 Tous les éléments de l’interface utilisent les **emojis du serveur**.
 
 ## Prérequis
@@ -54,15 +55,18 @@ python main.py            # démarre le bot
 | `CLIENT_ID` | Identifiant de l’application Discord (facultatif, non utilisé au démarrage) |
 | `GUILD_ID` | Serveur de test : les commandes y apparaissent immédiatement |
 | `THEME` | `violet` (défaut) ou `noblesse` |
-| `BANNER_URL` | Image de bannière : mécanisme conservé, **affichage retiré** (voir plus bas) |
+| `BANNER_URL` | Repli de la bannière si `assets/banniere_jjk.png` est absent |
 | `HELP_GIF_URL` | GIF affiché dans `/jjk help` |
 | `STAFF_ROLE_ID` | Facultatif : rôle autorisé à utiliser les commandes du staff |
 
-`BANNER_URL` attend une URL directe : héberge ton image sur un service qui fournit une
-URL de fichier (salon Discord, hébergeur d’images…). **L’affichage de la bannière a été
-retiré à la demande** (l’ancien visuel « Jujutsu Kaisen » n’apparaît plus en haut des
-réponses) : le code reste en place (`theme.with_banner`) pour remettre une nouvelle
-image en haut de tous les embeds quand tu veux.
+La bannière s’affiche en **début et en fin** de chaque réponse de contenu (fiche,
+compétences, guide), dans un embed séparé, exactement comme dans le visuel du
+serveur. L’image `assets/banniere_jjk.png` est envoyée **localement** via
+`attachment://` : contrairement aux URL de CDN Discord, qui sont signées et expirent
+en quelques heures, elle n’a pas de date de péremption — c’est donc elle qui est
+utilisée en priorité, et elle vit dans le dépôt. `BANNER_URL` ne sert que de repli
+si ce fichier est absent : il attend une URL directe (hébergeur d’images, salon
+Discord…). Pour changer de bannière, remplace simplement le fichier `assets/`.
 
 Changer de thème ne demande aucune modification de code : `THEME=noblesse` rétablit
 l’identité visuelle d’origine (bordeaux et or), `THEME=violet` utilise la palette de
@@ -158,6 +162,7 @@ XP et des prérequis, qu’un niveau supérieur ne peut donc pas contourner.
 ```
 main.py                       point d’entrée (--sync, --verbose)
 config/emojis.json            catalogue des emojis du serveur
+assets/banniere_jjk.png       bannière locale, jointe en tête et en pied des réponses
 jjkbot/
   config.py                   lecture du .env
   theme.py                    palettes et mise en forme des embeds
@@ -183,7 +188,7 @@ main.py                  ← point d’entrée (commande de démarrage)
 requirements.txt         ← dépendances, à la racine du dépôt
 jjkbot/                  ← tout le code du bot
 config/emojis.json       ← catalogue des emojis
-assets/                  ← bannière (facultatif, seulement si servie localement)
+assets/                  ← bannière du bot (banniere_jjk.png, servie en priorité)
 tests/                   ← facultatif, utile pour tester avant de pousser
 .env.example             ← modèle de configuration
 .gitignore

@@ -1,6 +1,9 @@
 """Tests de la couche de présentation."""
 
+import tempfile
 import unittest
+import unittest.mock
+from pathlib import Path
 
 import discord
 
@@ -26,18 +29,19 @@ class ThemeRenderingTests(unittest.TestCase):
         self.assertIn("Profil", rendered)
         self.assertTrue(rendered.endswith(": @izouk"))
 
-    def test_group_met_les_libelles_en_titre_souligne_et_les_valeurs_en_code(self):
-        blob = theme.group(
+    def test_row_mets_deux_champs_sur_une_meme_ligne(self):
+        rendered = theme.row(
             ("identite", "Identité", "Zuruï"),
             ("age", "Âge", "1 an"),
         )
-        lines = blob.splitlines()
+        lines = rendered.splitlines()
 
-        self.assertEqual(lines[0], "### 🪪 __Identité__")
-        self.assertEqual(lines[1], "`Zuruï`")
-        self.assertEqual(lines[2], "")
-        self.assertEqual(lines[3], "### ⏳ __Âge__")
-        self.assertEqual(lines[4], "`1 an`")
+        # Un seul ligne : deux champs, libellés en gras, valeurs en `code`,
+        # séparés par un point — la version compacte de l’ancien `group`.
+        self.assertEqual(len(lines), 1)
+        self.assertIn("**Identité :** `Zuruï`", lines[0])
+        self.assertIn("•", lines[0])
+        self.assertIn("**Âge :** `1 an`", lines[0])
 
     def test_field_label_est_un_titre_markdown_souligne(self):
         self.assertEqual(theme.field_label("race", "Race"), "### 🧬 __Race__")
@@ -160,21 +164,62 @@ class ThemeBannerTests(unittest.TestCase):
     def tearDown(self):
         config.BANNER_URL = self.original
 
+    @staticmethod
+    def _missing_banner_path() -> Path:
+        """Chemin d’image de bannière volontairement absent."""
+        return Path(tempfile.gettempdir()) / "banniere_jjk_inexistante.png"
+
     def test_sans_banniere_un_seul_embed(self):
         config.BANNER_URL = None
         embed = theme.content_embed(theme.SECTION_PROFIL, "Titre")
 
-        self.assertEqual(theme.with_banner(embed), [embed])
-        self.assertIsNone(theme.banner_embed())
+        with unittest.mock.patch.object(config, "BANNER_PATH", self._missing_banner_path()):
+            self.assertEqual(theme.with_banner(embed), [embed])
+            self.assertIsNone(theme.banner_embed())
 
-    def test_avec_banniere_deux_embeds(self):
+    def test_banniere_par_url_en_trois_embeds(self):
         config.BANNER_URL = "https://exemple.test/banniere.png"
         embed = theme.content_embed(theme.SECTION_PROFIL, "Titre")
-        embeds = theme.with_banner(embed)
 
-        self.assertEqual(len(embeds), 2)
+        with unittest.mock.patch.object(config, "BANNER_PATH", self._missing_banner_path()):
+            files: list[discord.File] = []
+            embeds = theme.with_banner(embed, files)
+
+        # Bannière en tête, contenu au milieu, même bannière en pied.
+        self.assertEqual(len(embeds), 3)
         self.assertEqual(embeds[0].image.url, "https://exemple.test/banniere.png")
         self.assertIs(embeds[1], embed)
+        self.assertEqual(embeds[2].image.url, embeds[0].image.url)
+        self.assertEqual(files, [])
+
+    def test_banniere_locale_jointe_au_message(self):
+        config.BANNER_URL = None
+        embed = theme.content_embed(theme.SECTION_PROFIL, "Titre")
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "banniere_jjk.png"
+            path.write_bytes(b"image")
+            with unittest.mock.patch.object(config, "BANNER_PATH", path):
+                files: list[discord.File] = []
+                embeds = theme.with_banner(embed, files)
+
+            # L’image locale est jointe une seule fois et sert les deux
+            # bannières (fermée avant de supprimer le dossier temporaire).
+            self.assertEqual(len(embeds), 3)
+            self.assertEqual(embeds[0].image.url, "attachment://banniere_jjk.png")
+            self.assertEqual(embeds[2].image.url, "attachment://banniere_jjk.png")
+            self.assertEqual(len(files), 1)
+            self.assertEqual(files[0].filename, "banniere_jjk.png")
+            files[0].close()
+
+    def test_banniere_locale_sans_liste_de_fichiers_renvoie_none(self):
+        # Sans `files`, l’image locale ne peut pas être jointe au message :
+        # on préfère ne pas afficher de bannière qu’un lien cassé.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "banniere_jjk.png"
+            path.write_bytes(b"image")
+            with unittest.mock.patch.object(config, "BANNER_PATH", path):
+                self.assertIsNone(theme.banner_embed())
 
     def test_content_embed_avec_auteur(self):
         embed = theme.content_embed(
