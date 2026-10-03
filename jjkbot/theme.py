@@ -29,13 +29,10 @@ SECTION_ERREUR = "erreur"
 SECTION_ALERTE = "alerte"
 SECTION_NEUTRE = "neutre"
 
-# Espace d’un em : contrairement à l’espace simple (U+0020), le Markdown de
-# Discord ne le compresse pas — c’est lui qui sépare les champs d’une paire
-# et qui étire une ligne jusqu’à la largeur de la bannière.
-EM_SPACE = "\u2003"
-
-# Écart autour du « • » entre deux champs d’une même ligne (en em-spaces).
-PAIR_GAP = EM_SPACE * 5
+# Champ de nom vide : Discord impose un nom de champ non nul, mais un
+# espace insécable ne prend pas de place — le libellé vit alors dans la
+# valeur, où le Markdown est rendu.
+BLANK_FIELD = "\u200b"
 
 
 @dataclass(frozen=True)
@@ -155,6 +152,19 @@ def field_label(key: str, text: str, guild=None) -> str:
     return f"### {emoji(key, guild)} __{text}__"
 
 
+def field_title(key: str, text: str, guild=None) -> str:
+    """Titre de champ en gras souligné : `__**🪪 Identité**__`.
+
+    Les grands titres `###` ne sont rendus que dans la **description** d’un
+    embed — Discord les interdit dans les valeurs de champ (discord-api-docs
+    #7167) et n’y rend pas le Markdown dans les noms (#1089). Les valeurs de
+    champ, elles, supportent tout le Markdown : c’est donc là que part le
+    libellé des colonnes, en gras souligné, pour donner l’allure du titre du
+    modèle « un grand titre par champ ».
+    """
+    return f"__**{emoji(key, guild)} {text}**__"
+
+
 def value_code(value) -> str:
     """Valeur d’un champ entre accents graves (`code`), propre pour le Markdown."""
     text = str(value).strip() if value is not None and str(value).strip() else "Non renseigné"
@@ -162,31 +172,6 @@ def value_code(value) -> str:
     # (hors expression de f-string : les antislashs y sont interdits avant 3.12)
     clean = text.replace("`", "\u2019")
     return f"`{clean}`"
-
-
-def row(*specs, guild=None) -> str:
-    """Une paire de champs de fiche en deux lignes.
-
-    ```
-    ### 🪪 __Identité__          •          ⏳ __Âge__
-    `Zuruï`          •          `1 an`
-    ```
-
-    Le `###` initial fait de **toute la ligne** un titre Discord (le plus
-    petit disponible, nettement plus gros que le texte courant) : les deux
-    libellés de la paire sont donc agrandis ensemble, et les valeurs en
-    `code` se lisent dessous. Le large espace autour du « • » est fait
-    d’em-spaces, que le Markdown de Discord ne compresse pas : c’est lui qui
-    sépare les deux champs et qui étire l’embed jusqu’à la largeur de la
-    bannière.
-
-    Chaque spécification est un tuple `(clé_emoji, libellé, valeur)`.
-    """
-    # Séparateur de paire : large espace de chaque côté du « • ».
-    separator = f"{PAIR_GAP}•{PAIR_GAP}"
-    labels = separator.join(f"{emoji(spec[0], guild)} __{spec[1]}__" for spec in specs)
-    values = separator.join(value_code(spec[2]) for spec in specs)
-    return f"### {labels}\n{values}"
 
 
 def blocks(*chunks) -> str:

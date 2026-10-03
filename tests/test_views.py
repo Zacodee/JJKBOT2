@@ -85,7 +85,7 @@ class ProfileEmbedTests(unittest.TestCase):
     def tearDown(self):
         self.patch.stop()
 
-    def test_page_profil_tient_en_six_lignes(self):
+    def test_page_profil_est_une_grille_de_champs(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "global", None)[0]
 
         # Le titre stylé vit dans la description (seul endroit où Discord
@@ -93,25 +93,29 @@ class ProfileEmbedTests(unittest.TestCase):
         self.assertIsNone(embed.title)
         self.assertTrue(embed.description.startswith("## 📛"))
         self.assertIn("@Izouk", embed.description)
-        # Chaque paire devient un titre `###` sur deux lignes : libellés
-        # agrandis (« plus gros »), valeurs en `code` dessous, et un large
-        # espace d’em-spaces entre les deux champs qui élargit l’embed.
-        lines = embed.description.splitlines()
-        label_line = next(line for line in lines if "__Identité__" in line)
-        self.assertTrue(label_line.startswith("### "))
-        self.assertIn("__Âge__", label_line)
-        self.assertIn(theme.PAIR_GAP + "•" + theme.PAIR_GAP, label_line)
-        values_line = lines[lines.index(label_line) + 1]
-        self.assertIn("`Zuruï`", values_line)
-        self.assertIn("`1 an`", values_line)
-        self.assertIn("__Race__", embed.description)
-        self.assertIn("__Grade__", embed.description)
-        self.assertIn("__Alignement__", embed.description)
-        self.assertIn("Chaotique mauvais", embed.description)
-        # Trois paires = trois titres espacés.
-        self.assertEqual(embed.description.count("### "), 3)
-        self.assertIn(theme.EM_SPACE, embed.description)
-        self.assertIn("citation", embed.description.lower())
+        # Six champs en colonnes (deux par ligne, alignés par Discord) plus
+        # la citation en pleine largeur : chaque valeur tombe sous son
+        # libellé, impossible de se décaler.
+        self.assertEqual(len(embed.fields), 7)
+        pairs = [
+            ("Identité", "Zuruï"),
+            ("Âge", "1 an"),
+            ("Race", "Fléau"),
+            ("Grade", "Spécial"),
+            ("Alignement", "Chaotique mauvais"),
+            ("Rôle", "Fléaux"),
+        ]
+        for field, (label, value) in zip(embed.fields, pairs):
+            self.assertEqual(field.name, theme.BLANK_FIELD)
+            self.assertTrue(field.inline)
+            # Libellé gras souligné (le Markdown n’est pas rendu dans les
+            # noms de champ), valeur en `code` dessous.
+            self.assertIn("__**", field.value)
+            self.assertIn(f"{label}**__", field.value)
+            self.assertIn(f"`{value}`", field.value)
+        citation = embed.fields[-1]
+        self.assertFalse(citation.inline)
+        self.assertIn("Citation", citation.value)
         self.assertIn("Page 1 / 3", embed.footer.text)
 
     def test_page_statistiques_sans_bloc_de_code(self):

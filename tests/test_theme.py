@@ -29,25 +29,13 @@ class ThemeRenderingTests(unittest.TestCase):
         self.assertIn("Profil", rendered)
         self.assertTrue(rendered.endswith(": @izouk"))
 
-    def test_row_affiche_une_paire_sur_deux_lignes_en_titre(self):
-        rendered = theme.row(
-            ("identite", "Identité", "Zuruï"),
-            ("age", "Âge", "1 an"),
-        )
-        lines = rendered.splitlines()
+    def test_field_title_est_gras_souligne(self):
+        # Discord n’affiche ni `###` ni le Markdown dans les noms de champ :
+        # le libellé de colonne vit donc dans la valeur, en gras souligné.
+        self.assertEqual(theme.field_title("race", "Race"), "__**🧬 Race**__")
 
-        # Libellés en titre `###` (plus gros) avec un large espace entre les
-        # deux champs, valeurs en `code` alignées dessous.
-        self.assertEqual(len(lines), 2)
-        self.assertTrue(lines[0].startswith("### "))
-        self.assertIn("__Identité__", lines[0])
-        self.assertIn("__Âge__", lines[0])
-        self.assertIn(theme.PAIR_GAP + "•" + theme.PAIR_GAP, lines[0])
-        self.assertIn("`Zuruï`", lines[1])
-        self.assertIn("`1 an`", lines[1])
-        # L’espace est fait d’em-spaces, que le Markdown ne compresse pas.
-        self.assertIn(theme.EM_SPACE, lines[0])
-        self.assertNotIn("  •  ", lines[0])
+    def test_blank_field_est_un_espace_insécable(self):
+        self.assertEqual(theme.BLANK_FIELD, "\u200b")
 
     def test_field_label_est_un_titre_markdown_souligne(self):
         self.assertEqual(theme.field_label("race", "Race"), "### 🧬 __Race__")

@@ -59,34 +59,36 @@ def build_profile_embeds(
     }[page]
 
     if page == "global":
-        # Chaque paire devient un titre `###` (plus gros) sur deux lignes :
-        # libellés agrandis, valeurs en `code` dessous, et le large espace du
-        # « • » élargit la fiche jusqu’à la largeur de la bannière.
+        # Modèle « grille » : les champs inline de Discord forment de vraies
+        # colonnes — chaque valeur tombe toujours sous son libellé, sans le
+        # décalage des paires écrites à la main dans la description. Le
+        # libellé vit dans la valeur (gras souligné) car Discord n’affiche ni
+        # les titres `###` ni le Markdown dans les noms de champ.
         embed = discord.Embed(
             colour=theme.color(section),
-            description=theme.blocks(
-                theme.title("profil", "Profil", guild, suffix=f" : @{target_user.display_name}"),
-                "\n\n".join(
-                    (
-                        theme.row(
-                            ("identite", "Identité", profile.name),
-                            ("age", "Âge", profile.age),
-                            guild=guild,
-                        ),
-                        theme.row(
-                            ("race", "Race", profile.race),
-                            ("grade", "Grade", profile.grade),
-                            guild=guild,
-                        ),
-                        theme.row(
-                            ("alignement", "Alignement", profile.alignment),
-                            ("role", "Rôle", profile.role),
-                            guild=guild,
-                        ),
-                    )
-                ),
-                theme.quote_block(profile.quote, guild),
+            description=theme.title(
+                "profil", "Profil", guild, suffix=f" : @{target_user.display_name}"
             ),
+        )
+        pairs = (
+            (("identite", "Identité", profile.name), ("age", "Âge", profile.age)),
+            (("race", "Race", profile.race), ("grade", "Grade", profile.grade)),
+            (
+                ("alignement", "Alignement", profile.alignment),
+                ("role", "Rôle", profile.role),
+            ),
+        )
+        for pair in pairs:
+            for key, label, value in pair:
+                embed.add_field(
+                    name=theme.BLANK_FIELD,
+                    value=f"{theme.field_title(key, label, guild)}\n{theme.value_code(value)}",
+                    inline=True,
+                )
+        embed.add_field(
+            name=theme.BLANK_FIELD,
+            value=theme.quote_block(profile.quote, guild),
+            inline=False,
         )
     elif page == "stats":
         total = sum(profile.stats.get(stat.id, 0) for stat in STAT_DEFINITIONS)

@@ -217,7 +217,7 @@ function panel(entry, tone) {
       <div class="desc">${markdown(entry.description)}</div>
       ${entry.fields.map((field) => `
         <div>
-          <div class="field-name">${markdown(field.name)}</div>
+          ${field.name.replace(/[\\u200b\\s]/g, "") ? `<div class="field-name">${markdown(field.name)}</div>` : ""}
           <div class="field-value">${markdown(field.value)}</div>
         </div>`).join("")}
       <div class="footer">${escapeHtml(entry.footer)}</div>

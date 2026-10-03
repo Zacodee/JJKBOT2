@@ -3,10 +3,12 @@
 Bot Discord **Python** dédié au support d’un serveur de roleplay écrit francophone.
 Fiches de personnage, statistiques, arbre de compétences et guide des nouveaux membres,
 présentés dans des embeds mis en forme **avec le Markdown Discord** : titres `##`,
-libellés de champs en titre `###` (plus gros), valeurs en `code`, deux champs par
-ligne séparés par un large espace sur la fiche et barres de progression en fin de
-statistique. Chaque réponse de contenu est **encadrée par la bannière** : embed de
-bannière en tête, contenu, bannière en pied — chacune avec sa propre image jointe.
+valeurs en `code`, barres de progression en fin de statistique. La page **Profil** est une
+**grille de champs** (`inline`) : Discord aligne lui-même les colonnes, chaque valeur
+tombe donc sous son libellé, en **gras souligné** (les grands titres `###` ne sont pas
+rendus dans les champs d’embed, seulement dans les descriptions). Chaque réponse de
+contenu est **encadrée par la bannière** : embed de bannière en tête, contenu, bannière
+en pied — chacune avec sa propre image jointe.
 Tous les éléments de l’interface utilisent les **emojis du serveur**.
 
 ## Prérequis
