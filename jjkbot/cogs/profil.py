@@ -150,38 +150,44 @@ class ProfilCog(
         statistique: app_commands.Choice[str],
         montant: app_commands.Range[int, 1, 100000],
     ) -> None:
+        # On acquitte l’interaction AVANT toute lecture/écriture : les
+        # lectures/disques du conteneur peuvent dépasser les 3 s du délai
+        # d’interaction (erreur 10062 « Unknown interaction »), auquel cas
+        # la réponse n’arrive plus jamais. Même protocole que send_profile.
+        await interaction.response.defer(ephemeral=True)
+
         profile = await get_profile(interaction.guild_id, interaction.user.id)
         if profile is None:
-            await interaction.response.send_message(
+            await interaction.edit_original_response(
                 embed=theme.notice_embed(
                     theme.SECTION_ALERTE,
                     "alerte",
                     "Crée d’abord ton profil avec `/profil creer`.",
                     interaction.guild,
                 ),
-                ephemeral=True,
+                view=None,
             )
             return
 
         stat = get_stat(statistique.value)
         if stat is None:
-            await interaction.response.send_message(
+            await interaction.edit_original_response(
                 embed=theme.notice_embed(
                     theme.SECTION_ERREUR, "erreur", "Cette statistique n’existe pas.", interaction.guild
                 ),
-                ephemeral=True,
+                view=None,
             )
             return
 
         if profile.stat_points < montant:
-            await interaction.response.send_message(
+            await interaction.edit_original_response(
                 embed=theme.notice_embed(
                     theme.SECTION_ALERTE,
                     "alerte",
                     f"Tu n’as que **{profile.stat_points} point(s)** disponible(s).",
                     interaction.guild,
                 ),
-                ephemeral=True,
+                view=None,
             )
             return
 
@@ -197,15 +203,14 @@ class ProfilCog(
             interaction.guild,
             interaction.guild_id,
         )
-        await interaction.response.send_message(
+        await interaction.edit_original_response(
             content=(
                 f"{theme.emoji('succes', interaction.guild)} **{montant} point(s)** ajouté(s) en "
                 f"**{stat.label}**. Il te reste **{profile.stat_points} point(s)**."
             ),
             embeds=embeds,
-            files=files,
+            attachments=files,
             view=profil_views.ProfileView(interaction.guild_id, interaction.user, "stats"),
-            ephemeral=True,
         )
 
     # --- Réinitialisation ------------------------------------------------

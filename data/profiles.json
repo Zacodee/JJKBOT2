@@ -17,20 +17,20 @@
         "- aveugle"
       ],
       "stats": {
-        "force": 0,
-        "resistance": 0,
+        "force": 1000,
+        "resistance": 1000,
         "vitesse": 0,
-        "reserveEO": 0,
-        "sortieEO": 0
+        "reserveEO": 1000,
+        "sortieEO": 1000
       },
-      "statPoints": 0,
+      "statPoints": 6000,
       "experience": 0,
       "unlockedSkills": [],
       "imageName": "b7750bbbb5a7ec45901b964026b917cc.jpg",
       "imageUrl": null,
       "imageFile": "1540742405849088052-651499309933658116.jpg",
       "createdAt": "2026-10-02T20:02:26.413730+00:00",
-      "updatedAt": "2026-10-02T23:58:16.797530+00:00",
+      "updatedAt": "2026-10-03T12:14:31.061270+00:00",
       "version": 2
     }
   },

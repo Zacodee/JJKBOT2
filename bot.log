@@ -55,3 +55,116 @@ discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
 12:10:38 | INFO     | discord.gateway | Shard ID None has connected to Gateway (Session ID: fa3d7f1d5396206d97fef1d2d182ce16).
 12:10:40 | INFO     | jjkbot | Bot connecté : Jujutsu Kaisen Hollow terror#9370 • 2 serveur(s) • thème « violet »
 12:10:40 | INFO     | jjkbot | 35 emoji(s) custom manquant(s) : les emojis unicode de secours sont utilisés (voir /jjk emojis).
+13:41:50 | ERROR    | jjkbot | Erreur pendant la commande /profil voir : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 42, in voir
+    await profil_views.send_profile(interaction, target)
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\views\profil.py", line 246, in send_profile
+    # peuvent dépasser les 3 s du délai d’interaction (erreur 10062), surtout au
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        await interaction.response.defer(ephemeral=ephemeral)
+        ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 1085, in send_message
+    data = await adapter.create_interaction_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
+13:41:59 | ERROR    | jjkbot | Erreur pendant la commande /profil voir : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 42, in voir
+    await profil_views.send_profile(interaction, target)
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\views\profil.py", line 253, in send_profile
+    message = (
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 892, in defer
+    response = await adapter.create_interaction_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
+13:44:22 | ERROR    | jjkbot | Erreur pendant la commande /profil voir : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 42, in voir
+    await profil_views.send_profile(interaction, target)
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\views\profil.py", line 253, in send_profile
+    message = (
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 892, in defer
+    response = await adapter.create_interaction_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
+13:44:42 | ERROR    | jjkbot | Erreur pendant la commande /profil attribuer-stat : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 200, in attribuer_stat
+    await interaction.response.send_message(
+    ...<8 lines>...
+    )
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 1085, in send_message
+    data = await adapter.create_interaction_response(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
+13:46:15 | ERROR    | jjkbot | Erreur pendant la commande /profil voir : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 42, in voir
+    await profil_views.send_profile(interaction, target)
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\views\profil.py", line 253, in send_profile
+    message = (
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 892, in defer
+    response = await adapter.create_interaction_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction
+14:10:32 | INFO     | discord.gateway | Shard ID None has successfully RESUMED session fa3d7f1d5396206d97fef1d2d182ce16.
+14:14:07 | ERROR    | jjkbot | Erreur pendant la commande /profil voir : 404 Not Found (error code: 10062): Unknown interaction
+Traceback (most recent call last):
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(self.binding, interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\cogs\profil.py", line 42, in voir
+    await profil_views.send_profile(interaction, target)
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\jjkbot\views\profil.py", line 253, in send_profile
+    message = (
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\interactions.py", line 892, in defer
+    response = await adapter.create_interaction_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Zaki\Desktop\projet code\bot discord\.venv\Lib\site-packages\discord\webhook\async_.py", line 224, in request
+    raise NotFound(response, data)
+discord.errors.NotFound: 404 Not Found (error code: 10062): Unknown interaction

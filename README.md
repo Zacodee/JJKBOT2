@@ -37,6 +37,14 @@ python main.py            # démarre le bot
 (apparition immédiate), sinon globalement (jusqu’à 1 h de propagation).
 `python main.py --verbose` active les logs de debug.
 
+> ⚠️ **Un seul bot à la fois** : si le bot tourne déjà sur ton hébergeur, **ne lance
+> pas aussi `python main.py` en local avec le même token**. Deux instances se
+> partagent alors les mêmes interactions : elles se répondent l’une à l’autre
+> (erreurs `40060` / `10062` dans les logs) et chacune affiche le rendu de *sa*
+> version du code — la fiche « saute » entre l’ancien et le nouveau style selon
+> qui gagne la course. Arrête l’instance locale (Gestion des tâches → `python.exe`)
+> ou l’hébergeur avant de tester.
+
 ## Configuration
 
 | Variable | Rôle |

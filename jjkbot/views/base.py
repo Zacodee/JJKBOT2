@@ -22,7 +22,13 @@ async def notify_error(interaction: discord.Interaction, message: str = GENERIC_
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            try:
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+            except discord.HTTPException:
+                # L’interaction a pu être acquittée entre-temps (double
+                # instance du bot, ou réponse déjà acceptée par Discord) :
+                # le jeton reste utilisable pour un followup.
+                await interaction.followup.send(embed=embed, ephemeral=True)
     except discord.HTTPException:  # pragma: no cover - dépend de l’API
         logger.debug("Impossible d’envoyer le message d’erreur à l’utilisateur.")
 
