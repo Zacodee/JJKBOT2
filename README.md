@@ -3,7 +3,8 @@
 Bot Discord **Python** dédié au support d’un serveur de roleplay écrit francophone.
 Fiches de personnage, statistiques, arbre de compétences et guide des nouveaux membres,
 présentés dans des embeds mis en forme **avec le Markdown Discord** : titres `##`,
-libellés en **gras**, valeurs en `code` et tableaux alignés dans des blocs `````.
+libellés de champ en petit titre souligné (`### __Identité__`), valeurs en `code`,
+et tableaux alignés ouvrant par l’emoji de chaque statistique dans des blocs `````.
 Tous les éléments de l’interface utilisent les **emojis du serveur**.
 
 ## Prérequis
@@ -53,13 +54,15 @@ python main.py            # démarre le bot
 | `CLIENT_ID` | Identifiant de l’application Discord (facultatif, non utilisé au démarrage) |
 | `GUILD_ID` | Serveur de test : les commandes y apparaissent immédiatement |
 | `THEME` | `violet` (défaut) ou `noblesse` |
-| `BANNER_URL` | Bannière décorative affichée en haut de chaque réponse |
+| `BANNER_URL` | Image de bannière : mécanisme conservé, **affichage retiré** (voir plus bas) |
 | `HELP_GIF_URL` | GIF affiché dans `/jjk help` |
 | `STAFF_ROLE_ID` | Facultatif : rôle autorisé à utiliser les commandes du staff |
 
-`BANNER_URL` attend une URL directe : héberge `assets/banniere_jjk.png` sur un service
-qui fournit une URL de fichier (salon Discord, hébergeur d’images…). Sans `BANNER_URL`,
-les réponses s’affichent simplement sans bannière.
+`BANNER_URL` attend une URL directe : héberge ton image sur un service qui fournit une
+URL de fichier (salon Discord, hébergeur d’images…). **L’affichage de la bannière a été
+retiré à la demande** (l’ancien visuel « Jujutsu Kaisen » n’apparaît plus en haut des
+réponses) : le code reste en place (`theme.with_banner`) pour remettre une nouvelle
+image en haut de tous les embeds quand tu veux.
 
 Changer de thème ne demande aucune modification de code : `THEME=noblesse` rétablit
 l’identité visuelle d’origine (bordeaux et or), `THEME=violet` utilise la palette de

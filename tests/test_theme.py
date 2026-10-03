@@ -26,17 +26,21 @@ class ThemeRenderingTests(unittest.TestCase):
         self.assertIn("Profil", rendered)
         self.assertTrue(rendered.endswith(": @izouk"))
 
-    def test_entry_met_le_libelle_en_gras_et_la_valeur_en_code(self):
+    def test_group_met_les_libelles_en_titre_souligne_et_les_valeurs_en_code(self):
         blob = theme.group(
             ("identite", "Identité", "Zuruï"),
             ("age", "Âge", "1 an"),
         )
         lines = blob.splitlines()
 
-        self.assertEqual(len(lines), 2)
-        self.assertTrue(lines[0].startswith("🪪"))
-        self.assertIn("**Identité :** `Zuruï`", lines[0])
-        self.assertIn("**Âge :** `1 an`", lines[1])
+        self.assertEqual(lines[0], "### 🪪 __Identité__")
+        self.assertEqual(lines[1], "`Zuruï`")
+        self.assertEqual(lines[2], "")
+        self.assertEqual(lines[3], "### ⏳ __Âge__")
+        self.assertEqual(lines[4], "`1 an`")
+
+    def test_field_label_est_un_titre_markdown_souligne(self):
+        self.assertEqual(theme.field_label("race", "Race"), "### 🧬 __Race__")
 
     def test_entry_remplace_les_valeurs_vides(self):
         self.assertIn("**Race :** `Non renseigné`", theme.entry("race", "Race", ""))

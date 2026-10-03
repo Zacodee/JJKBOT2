@@ -74,8 +74,11 @@ class ProfileEmbedTests(unittest.TestCase):
         self.assertIsNone(embed.title)
         self.assertTrue(embed.description.startswith("## 📛"))
         self.assertIn("@Izouk", embed.description)
-        self.assertIn("**Identité :** `Zuruï`", embed.description)
-        self.assertIn("**Âge :** `1 an`", embed.description)
+        # Chaque classe d’info est un petit titre souligné, valeur en `code`.
+        self.assertIn("### 🪪 __Identité__", embed.description)
+        self.assertIn("`Zuruï`", embed.description)
+        self.assertIn("### ⏳ __Âge__", embed.description)
+        self.assertIn("`1 an`", embed.description)
         self.assertIn("Chaotique mauvais", embed.description)
         self.assertIn("citation", embed.description.lower())
         self.assertIn("Page 1 / 3", embed.footer.text)
@@ -89,14 +92,17 @@ class ProfileEmbedTests(unittest.TestCase):
         self.assertIn("```", embed.description)
         for label in ("Force", "Résistance", "Vitesse", "Réserve d'EO", "Sortie d'EO"):
             self.assertIn(label, embed.description)
+        # L’emoji (repli unicode) ouvre chaque ligne devant la barre.
+        for glyph in ("⚔️", "🛡️", "💨", "🔮", "🌀"):
+            self.assertIn(glyph, embed.description)
         self.assertIn("Page 2 / 3", embed.footer.text)
 
     def test_page_traits_et_defauts(self):
         embed = profil_views.build_profile_embeds(make_profile(), FakeUser(), "traits", None)[0]
 
         self.assertEqual(len(embed.fields), 0)
-        self.assertIn("### ✅ Traits", embed.description)
-        self.assertIn("### ⚠️ Défauts", embed.description)
+        self.assertIn("### ✅ __Traits__", embed.description)
+        self.assertIn("### ⚠️ __Défauts__", embed.description)
         self.assertIn("Rusé", embed.description)
         self.assertIn("Impitoyable", embed.description)
         self.assertIn("Page 3 / 3", embed.footer.text)
@@ -106,11 +112,13 @@ class ProfileEmbedTests(unittest.TestCase):
 
         self.assertTrue(embed.description.startswith("## 📛"))
 
-    def test_banniere_ajoutee_quand_configuree(self):
+    def test_banniere_plus_affichee_meme_si_configuree(self):
         with unittest.mock.patch.object(config, "BANNER_URL", "https://exemple.test/b.png"):
             embeds = profil_views.build_profile_embeds(make_profile(), FakeUser(), "global", None)
 
-        self.assertEqual(len(embeds), 2)
+        # Le visuel « Jujutsu Kaisen » a été retiré à la demande : la fiche
+        # tient en un seul embed même quand une bannière est configurée.
+        self.assertEqual(len(embeds), 1)
 
 
 class ProfileImageTests(unittest.IsolatedAsyncioTestCase):

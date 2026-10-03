@@ -123,27 +123,49 @@ def entry(
     value,
     guild=None,
 ) -> str:
-    """Une ligne d’information au style Discord : `🪪 **Identité :** `Zuruï``.
+    """Une ligne d’information compacte : `🪪 **Identité :** `Zuruï``.
 
-    Le libellé est en **gras** et la valeur entre accents graves (`code`) :
-    c’est ce contraste de graisse et de police qui donne à la fiche sa
-    hiérarchie visuelle, exactement comme dans les messages Discord manuels.
+    Style « ligne » réservé aux listes (compétences) : le libellé est en
+    **gras** et la valeur entre accents graves (`code`). Pour les champs
+    d’une fiche, voir `group`/`field_label`, qui les met en valeur avec un
+    titre légèrement plus gros et souligné.
     """
+    return f"{emoji(key, guild)} **{label} :** {value_code(value)}"
+
+
+def field_label(key: str, text: str, guild=None) -> str:
+    """Libellé de champ en petit titre souligné : `### 🪪 __Identité__`.
+
+    Discord n’a pas de taille « moyenne » : `###` est le plus petit titre et
+    fait légèrement ressortir le libellé au-dessus du texte courant, et le
+    soulignement le sépare visuellement du reste. Comme tout titre, ça ne
+    fonctionne que dans la **description** d’un embed.
+    """
+    return f"### {emoji(key, guild)} __{text}__"
+
+
+def value_code(value) -> str:
+    """Valeur d’un champ entre accents graves (`code`), propre pour le Markdown."""
     text = str(value).strip() if value is not None and str(value).strip() else "Non renseigné"
-    glyph = emoji(key, guild)
     # Une apostrophe inversée saisie par un joueur casserait la mise en forme.
+    # (hors expression de f-string : les antislashs y sont interdits avant 3.12)
     clean = text.replace("`", "\u2019")
-    return f"{glyph} **{label} :** `{clean}`"
+    return f"`{clean}`"
 
 
 def group(*specs, guild=None) -> str:
-    """Assemble plusieurs lignes `entry` en un bloc.
+    """Assemble plusieurs champs de fiche en un bloc.
 
+    Chaque champ devient un libellé-titre souligné suivi de sa valeur en
+    `code` : c’est la hiérarchie « classe d’info visible » des fiches.
     Chaque spécification est un tuple `(clé_emoji, libellé, valeur)` ; un
     quatrième élément éventuel est ignoré (compatibilité avec l’ancien style).
     """
-    lines = [entry(spec[0], spec[1], spec[2], guild=guild) for spec in specs]
-    return "\n".join(lines)
+    fields = [
+        f"{field_label(spec[0], spec[1], guild)}\n{value_code(spec[2])}"
+        for spec in specs
+    ]
+    return "\n\n".join(fields)
 
 
 def blocks(*chunks) -> str:

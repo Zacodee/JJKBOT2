@@ -50,7 +50,7 @@ class CompetencesCog(
         embed = competences_views.build_overview_embed(profile, target, interaction.guild)
         await emojis_module.ensure_loaded(interaction.guild)
         await interaction.response.send_message(
-            embeds=theme.with_banner(embed),
+            embeds=[embed],
             view=competences_views.OverviewView(interaction.guild_id, target),
         )
 
@@ -73,9 +73,9 @@ class CompetencesCog(
         view = competences_views.ShopView(interaction.guild_id, interaction.user.id, profile)
         await emojis_module.ensure_loaded(interaction.guild)
         await interaction.response.send_message(
-            embeds=theme.with_banner(
+            embeds=[
                 competences_views.build_shop_root_embed(profile, interaction.guild)
-            ),
+            ],
             view=view,
             ephemeral=True,
         )

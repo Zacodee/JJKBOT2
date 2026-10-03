@@ -85,16 +85,20 @@ def build_profile_embeds(
         )
     elif page == "stats":
         total = sum(profile.stats.get(stat.id, 0) for stat in STAT_DEFINITIONS)
-        # Tableau aligné dans un bloc de code : les replis unicode seulement,
-        # car les emojis custom ne sont pas rendus à l’intérieur d’un ```.
-        table = theme.mono_table(
-            (
-                stat.label,
-                str(profile.stats.get(stat.id, 0)),
-                theme.progress_bar(profile.stats.get(stat.id, 0), total or 1),
+        # Tableau aligné dans un bloc de code, avec l’emoji de chaque stat en
+        # tête de ligne. Dans un ``` seuls les replis unicode sont utilisés :
+        # les emojis custom du serveur ne sont pas rendus à l’intérieur.
+        label_width = max(len(stat.label) for stat in STAT_DEFINITIONS)
+        value_width = max(len(str(profile.stats.get(stat.id, 0))) for stat in STAT_DEFINITIONS)
+        rows = []
+        for stat in STAT_DEFINITIONS:
+            value = profile.stats.get(stat.id, 0)
+            rows.append(
+                f"{theme.fallback(stat.emoji)}  {stat.label.ljust(label_width)}  "
+                f"{str(value).rjust(value_width)}  "
+                f"{theme.progress_bar(value, total or 1)}"
             )
-            for stat in STAT_DEFINITIONS
-        )
+        table = theme.code_block(rows)
         embed = discord.Embed(
             colour=theme.color(section),
             description=theme.blocks(
@@ -110,9 +114,9 @@ def build_profile_embeds(
             colour=theme.color(section),
             description=theme.blocks(
                 theme.title("page_traits", "Traits & défauts", guild, suffix=f" : {profile.name}"),
-                theme.heading(f"{theme.emoji('debloque', guild)} Traits", 3, guild),
+                theme.field_label("debloque", "Traits", guild),
                 theme.bullet_list(profile.traits),
-                theme.heading(f"{theme.emoji('alerte', guild)} Défauts", 3, guild),
+                theme.field_label("alerte", "Défauts", guild),
                 theme.bullet_list(profile.flaws),
             ),
         )
@@ -123,7 +127,10 @@ def build_profile_embeds(
     if timestamp is not None:
         embed.timestamp = timestamp
 
-    return theme.with_banner(embed)
+    # Pas de bannière au-dessus de la fiche : le visuel « Jujutsu Kaisen » a
+    # été retiré à la demande (le mécanisme theme.with_banner reste dispo
+    # pour en afficher une nouvelle).
+    return [embed]
 
 
 def _attach_character_image(
@@ -400,7 +407,7 @@ class IdentityModal(BaseModal):
         )
 
         await interaction.response.send_message(
-            embeds=theme.with_banner(
+            embeds=[
                 theme.notice_embed(
                     theme.SECTION_PROFIL,
                     "succes",
@@ -408,7 +415,7 @@ class IdentityModal(BaseModal):
                     interaction.guild,
                     footer="✦ Étape 2 sur 2",
                 )
-            ),
+            ],
             view=ContinueView(self.mode),
             ephemeral=True,
         )

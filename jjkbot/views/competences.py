@@ -336,7 +336,7 @@ class OverviewView(BaseView):
 
         embed = build_category_embed(profile, self.target_user, branch, interaction.guild)
         await interaction.response.edit_message(
-            embeds=theme.with_banner(embed),
+            embeds=[embed],
             view=OverviewView(self.guild_id, self.target_user, branch),
         )
 
@@ -371,7 +371,7 @@ class ContinueShopView(BaseView):
         view = ShopView(self.guild_id, self.user_id, profile)
         await interaction.response.edit_message(
             content=None,
-            embeds=theme.with_banner(build_shop_root_embed(profile, interaction.guild, basket=view.basket)),
+            embeds=[build_shop_root_embed(profile, interaction.guild, basket=view.basket)],
             view=view,
         )
 
@@ -463,7 +463,7 @@ class ShopView(BaseView):
             embed = build_basket_embed(self.profile, self.basket, guild)
         else:
             embed = build_shop_root_embed(self.profile, guild, self.message, self.basket)
-        return theme.with_banner(embed)
+        return [embed]
 
     # -- Actions ----------------------------------------------------------
 
@@ -552,6 +552,6 @@ class ShopView(BaseView):
                 f"{theme.emoji('succes', interaction.guild)} **{len(skills)}** compétence(s) débloquée(s) "
                 f"pour **{total} XP**. Il te reste **{profile.experience} XP**."
             ),
-            embeds=theme.with_banner(overview),
+            embeds=[overview],
             view=ContinueShopView(self.guild_id, self.user_id),
         )

@@ -155,7 +155,7 @@ class JjkCog(
     async def help(self, interaction: discord.Interaction) -> None:
         await emojis_module.ensure_loaded(interaction.guild)
         await interaction.response.send_message(
-            embeds=theme.with_banner(build_help_embed(interaction.guild))
+            embeds=[build_help_embed(interaction.guild)]
         )
 
     @app_commands.command(name="emojis", description="Vérifier les emojis du serveur utilisés par le bot")
