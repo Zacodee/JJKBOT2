@@ -29,6 +29,14 @@ SECTION_ERREUR = "erreur"
 SECTION_ALERTE = "alerte"
 SECTION_NEUTRE = "neutre"
 
+# Espace d’un em : contrairement à l’espace simple (U+0020), le Markdown de
+# Discord ne le compresse pas — c’est lui qui sépare les champs d’une paire
+# et qui étire une ligne jusqu’à la largeur de la bannière.
+EM_SPACE = "\u2003"
+
+# Écart autour du « • » entre deux champs d’une même ligne (en em-spaces).
+PAIR_GAP = EM_SPACE * 5
+
 
 @dataclass(frozen=True)
 class Palette:
@@ -157,13 +165,28 @@ def value_code(value) -> str:
 
 
 def row(*specs, guild=None) -> str:
-    """Plusieurs champs de fiche sur une MÊME ligne, séparés par « • ».
+    """Une paire de champs de fiche en deux lignes.
 
-    Version compacte de `group` : deux champs par ligne au lieu d’un libellé
-    + une valeur sur chacune, ce qui allège nettement la première page d’une
-    fiche. Chaque spécification est un tuple `(clé_emoji, libellé, valeur)`.
+    ```
+    ### 🪪 __Identité__          •          ⏳ __Âge__
+    `Zuruï`          •          `1 an`
+    ```
+
+    Le `###` initial fait de **toute la ligne** un titre Discord (le plus
+    petit disponible, nettement plus gros que le texte courant) : les deux
+    libellés de la paire sont donc agrandis ensemble, et les valeurs en
+    `code` se lisent dessous. Le large espace autour du « • » est fait
+    d’em-spaces, que le Markdown de Discord ne compresse pas : c’est lui qui
+    sépare les deux champs et qui étire l’embed jusqu’à la largeur de la
+    bannière.
+
+    Chaque spécification est un tuple `(clé_emoji, libellé, valeur)`.
     """
-    return "  •  ".join(entry(spec[0], spec[1], spec[2], guild=guild) for spec in specs)
+    # Séparateur de paire : large espace de chaque côté du « • ».
+    separator = f"{PAIR_GAP}•{PAIR_GAP}"
+    labels = separator.join(f"{emoji(spec[0], guild)} __{spec[1]}__" for spec in specs)
+    values = separator.join(value_code(spec[2]) for spec in specs)
+    return f"### {labels}\n{values}"
 
 
 def blocks(*chunks) -> str:
@@ -258,29 +281,41 @@ def bullet_list(entries: list[str], prefix: str = "•") -> str:
 # --- Bannière ----------------------------------------------------------------
 
 
-def banner_file() -> discord.File | None:
+def banner_file(part: str = "debut") -> discord.File | None:
     """Copie fraîche de l’image de bannière locale.
 
     Un `discord.File` ne peut être envoyé qu’une seule fois : on en ouvre un
     nouveau à chaque envoi. Renvoie None si l’image locale est absente.
+
+    La bannière de tête et celle de pied portent deux noms de fichier
+    distincts (`banniere_jjk.png` / `banniere_jjk_fin.png`) : deux embeds
+    d’un même message ne doivent jamais partager la même attachment, sinon
+    Discord laisse l’un des deux sur son image de remplacement floutée.
     """
     path = Path(config.BANNER_PATH)
     if not path.is_file() or path.stat().st_size <= 0:
         return None
+    filename = path.name if part != "fin" else f"{path.stem}_fin{path.suffix}"
     try:
-        return discord.File(path, filename=path.name)
+        return discord.File(path, filename=filename)
     except OSError as error:  # pragma: no cover - dépend du disque
         logger.warning("Image de bannière illisible (%s) : %s", path, error)
         return None
 
 
-def banner_embed(files: list[discord.File] | None = None) -> discord.Embed | None:
+def banner_embed(
+    files: list[discord.File] | None = None,
+    part: str = "debut",
+) -> discord.Embed | None:
     """Embed de bannière : image locale en priorité, `BANNER_URL` en repli.
 
     L’image locale (`assets/banniere_jjk.png`) est jointe au message via
     `attachment://` : contrairement aux URL de CDN Discord, qui sont signées
     et expirent en quelques heures, elle n’a pas de date de péremption. Elle
     est donc prioritaire sur `BANNER_URL`.
+
+    `part` choisit la variante jointe (`debut` ou `fin`) : chaque embed reçoit
+    sa propre attachment, jamais deux embeds ne partagent le même fichier.
 
     Sans image locale, `BANNER_URL` s’il est configuré s’affiche tel quel.
     Et si la bannière vient du fichier local mais qu’aucune liste `files`
@@ -292,7 +327,7 @@ def banner_embed(files: list[discord.File] | None = None) -> discord.Embed | Non
     if path.is_file() and path.stat().st_size > 0:
         if files is None:
             return None
-        file = banner_file()
+        file = banner_file(part)
         if file is None:  # pragma: no cover - le fichier vient d’être vérifié
             return None
         files.append(file)
@@ -314,11 +349,16 @@ def with_banner(
     La bannière encadre le message comme dans le visuel d’origine. Passer
     `files` permet de joindre l’image locale au message ; sans elle, seule
     une bannière par `BANNER_URL` (sans fichier) peut s’afficher.
+
+    Chaque bannière a sa propre attachment (`banniere_jjk.png` et
+    `banniere_jjk_fin.png`) : un même fichier référencé par deux embeds
+    laisse l’un des deux sur son image floutée de remplacement.
     """
-    banner = banner_embed(files)
-    if banner is None:
+    top = banner_embed(files, part="debut")
+    if top is None:
         return [content_embed]
-    return [banner, content_embed, banner]
+    bottom = banner_embed(files, part="fin") or top
+    return [top, content_embed, bottom]
 
 
 def notice_embed(

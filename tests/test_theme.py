@@ -29,19 +29,25 @@ class ThemeRenderingTests(unittest.TestCase):
         self.assertIn("Profil", rendered)
         self.assertTrue(rendered.endswith(": @izouk"))
 
-    def test_row_mets_deux_champs_sur_une_meme_ligne(self):
+    def test_row_affiche_une_paire_sur_deux_lignes_en_titre(self):
         rendered = theme.row(
             ("identite", "Identité", "Zuruï"),
             ("age", "Âge", "1 an"),
         )
         lines = rendered.splitlines()
 
-        # Un seul ligne : deux champs, libellés en gras, valeurs en `code`,
-        # séparés par un point — la version compacte de l’ancien `group`.
-        self.assertEqual(len(lines), 1)
-        self.assertIn("**Identité :** `Zuruï`", lines[0])
-        self.assertIn("•", lines[0])
-        self.assertIn("**Âge :** `1 an`", lines[0])
+        # Libellés en titre `###` (plus gros) avec un large espace entre les
+        # deux champs, valeurs en `code` alignées dessous.
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(lines[0].startswith("### "))
+        self.assertIn("__Identité__", lines[0])
+        self.assertIn("__Âge__", lines[0])
+        self.assertIn(theme.PAIR_GAP + "•" + theme.PAIR_GAP, lines[0])
+        self.assertIn("`Zuruï`", lines[1])
+        self.assertIn("`1 an`", lines[1])
+        # L’espace est fait d’em-spaces, que le Markdown ne compresse pas.
+        self.assertIn(theme.EM_SPACE, lines[0])
+        self.assertNotIn("  •  ", lines[0])
 
     def test_field_label_est_un_titre_markdown_souligne(self):
         self.assertEqual(theme.field_label("race", "Race"), "### 🧬 __Race__")
@@ -203,14 +209,17 @@ class ThemeBannerTests(unittest.TestCase):
                 files: list[discord.File] = []
                 embeds = theme.with_banner(embed, files)
 
-            # L’image locale est jointe une seule fois et sert les deux
-            # bannières (fermée avant de supprimer le dossier temporaire).
+            # Chaque bannière a SON attachment : un fichier partagé par deux
+            # embeds laisserait l’un des deux sur l’image floutée de
+            # remplacement (fermée avant de supprimer le dossier temporaire).
             self.assertEqual(len(embeds), 3)
             self.assertEqual(embeds[0].image.url, "attachment://banniere_jjk.png")
-            self.assertEqual(embeds[2].image.url, "attachment://banniere_jjk.png")
-            self.assertEqual(len(files), 1)
+            self.assertEqual(embeds[2].image.url, "attachment://banniere_jjk_fin.png")
+            self.assertEqual(len(files), 2)
             self.assertEqual(files[0].filename, "banniere_jjk.png")
-            files[0].close()
+            self.assertEqual(files[1].filename, "banniere_jjk_fin.png")
+            for file_ in files:
+                file_.close()
 
     def test_banniere_locale_sans_liste_de_fichiers_renvoie_none(self):
         # Sans `files`, l’image locale ne peut pas être jointe au message :

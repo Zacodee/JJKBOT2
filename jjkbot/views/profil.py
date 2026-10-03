@@ -59,13 +59,14 @@ def build_profile_embeds(
     }[page]
 
     if page == "global":
-        # Trois lignes de deux champs au lieu d’un libellé-titre + une valeur
-        # par champ : la première page reste complète mais tient en six lignes.
+        # Chaque paire devient un titre `###` (plus gros) sur deux lignes :
+        # libellés agrandis, valeurs en `code` dessous, et le large espace du
+        # « • » élargit la fiche jusqu’à la largeur de la bannière.
         embed = discord.Embed(
             colour=theme.color(section),
             description=theme.blocks(
                 theme.title("profil", "Profil", guild, suffix=f" : @{target_user.display_name}"),
-                "\n".join(
+                "\n\n".join(
                     (
                         theme.row(
                             ("identite", "Identité", profile.name),

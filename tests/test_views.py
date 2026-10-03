@@ -5,7 +5,7 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
-from jjkbot import config
+from jjkbot import config, theme
 from jjkbot.content.stats import DEFAULT_STATS
 from jjkbot.storage.profiles import Profile
 from jjkbot.views import competences as competences_views
@@ -93,15 +93,24 @@ class ProfileEmbedTests(unittest.TestCase):
         self.assertIsNone(embed.title)
         self.assertTrue(embed.description.startswith("## 📛"))
         self.assertIn("@Izouk", embed.description)
-        # Deux champs par ligne : libellé en gras, valeur en `code`, joints
-        # par un point — la fiche complète tient en six lignes.
-        self.assertIn("**Identité :** `Zuruï`", embed.description)
-        self.assertIn("**Âge :** `1 an`", embed.description)
-        self.assertIn("**Race :** `Fléau`", embed.description)
-        self.assertIn("**Grade :** `Spécial`", embed.description)
+        # Chaque paire devient un titre `###` sur deux lignes : libellés
+        # agrandis (« plus gros »), valeurs en `code` dessous, et un large
+        # espace d’em-spaces entre les deux champs qui élargit l’embed.
+        lines = embed.description.splitlines()
+        label_line = next(line for line in lines if "__Identité__" in line)
+        self.assertTrue(label_line.startswith("### "))
+        self.assertIn("__Âge__", label_line)
+        self.assertIn(theme.PAIR_GAP + "•" + theme.PAIR_GAP, label_line)
+        values_line = lines[lines.index(label_line) + 1]
+        self.assertIn("`Zuruï`", values_line)
+        self.assertIn("`1 an`", values_line)
+        self.assertIn("__Race__", embed.description)
+        self.assertIn("__Grade__", embed.description)
+        self.assertIn("__Alignement__", embed.description)
         self.assertIn("Chaotique mauvais", embed.description)
-        self.assertNotIn("###", embed.description)
-        self.assertLessEqual(len(embed.description.splitlines()), 7)
+        # Trois paires = trois titres espacés.
+        self.assertEqual(embed.description.count("### "), 3)
+        self.assertIn(theme.EM_SPACE, embed.description)
         self.assertIn("citation", embed.description.lower())
         self.assertIn("Page 1 / 3", embed.footer.text)
 
@@ -166,9 +175,14 @@ class ProfileBannerTests(unittest.IsolatedAsyncioTestCase):
 
                     self.assertEqual(len(embeds), 3)
                     self.assertEqual(embeds[0].image.url, "attachment://banniere_jjk.png")
-                    self.assertEqual(embeds[2].image.url, "attachment://banniere_jjk.png")
-                    # L’image locale n’est jointe qu’une fois pour les deux bannières.
-                    self.assertEqual(len(files), 1)
+                    # Pied de fiche : SECONDE attachment — jamais de fichier
+                    # partagé entre deux embeds (sinon l’un reste flouté).
+                    self.assertEqual(embeds[2].image.url, "attachment://banniere_jjk_fin.png")
+                    self.assertEqual(len(files), 2)
+                    self.assertEqual(
+                        [file.filename for file in files],
+                        ["banniere_jjk.png", "banniere_jjk_fin.png"],
+                    )
                     for file in files:
                         file.close()
 

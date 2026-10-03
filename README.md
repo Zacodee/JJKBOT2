@@ -3,9 +3,10 @@
 Bot Discord **Python** dédié au support d’un serveur de roleplay écrit francophone.
 Fiches de personnage, statistiques, arbre de compétences et guide des nouveaux membres,
 présentés dans des embeds mis en forme **avec le Markdown Discord** : titres `##`,
-libellés en **gras**, valeurs en `code`, deux champs par ligne sur la fiche et barres
-de progression en fin de statistique. Chaque réponse de contenu est **encadrée par la
-bannière** : embed de bannière en tête, contenu, même bannière en pied.
+libellés de champs en titre `###` (plus gros), valeurs en `code`, deux champs par
+ligne séparés par un large espace sur la fiche et barres de progression en fin de
+statistique. Chaque réponse de contenu est **encadrée par la bannière** : embed de
+bannière en tête, contenu, bannière en pied — chacune avec sa propre image jointe.
 Tous les éléments de l’interface utilisent les **emojis du serveur**.
 
 ## Prérequis
@@ -64,9 +65,12 @@ compétences, guide), dans un embed séparé, exactement comme dans le visuel du
 serveur. L’image `assets/banniere_jjk.png` est envoyée **localement** via
 `attachment://` : contrairement aux URL de CDN Discord, qui sont signées et expirent
 en quelques heures, elle n’a pas de date de péremption — c’est donc elle qui est
-utilisée en priorité, et elle vit dans le dépôt. `BANNER_URL` ne sert que de repli
-si ce fichier est absent : il attend une URL directe (hébergeur d’images, salon
-Discord…). Pour changer de bannière, remplace simplement le fichier `assets/`.
+utilisée en priorité, et elle vit dans le dépôt. Les deux embeds de bannière
+**n’en partagent jamais la même** : le pied utilise une seconde copie jointe sous
+le nom `banniere_jjk_fin.png`, sinon Discord laisse l’un des deux sur son image de
+remplacement floutée. `BANNER_URL` ne sert que de repli si ce fichier est absent :
+il attend une URL directe (hébergeur d’images, salon Discord…). Pour changer de
+bannière, remplace simplement le fichier `assets/`.
 
 Changer de thème ne demande aucune modification de code : `THEME=noblesse` rétablit
 l’identité visuelle d’origine (bordeaux et or), `THEME=violet` utilise la palette de
