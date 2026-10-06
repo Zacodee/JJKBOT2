@@ -109,7 +109,18 @@ class XpCog(
         if interaction.guild is None:  # pragma: no cover - la commande est guild_only
             return
 
-        await interaction.response.send_modal(xp_views.XPDemandModal(interaction.guild))
+        # On ouvre d’abord le menu du type d’interaction : Discord n’accepte que
+        # des champs texte dans une modale, donc le menu ne peut pas y figurer.
+        await interaction.response.send_message(
+            embed=theme.notice_embed(
+                theme.SECTION_DEMANDES,
+                "demande_xp",
+                "Choisis le **type d’interaction** de la scène : le formulaire s’ouvrira juste après.",
+                interaction.guild,
+            ),
+            view=xp_views.XPInteractionTypeView(interaction.guild),
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

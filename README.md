@@ -179,16 +179,20 @@ L’XP s’obtient en RP et sert à deux choses : débloquer des compétences
 | Commande | Effet |
 |---|---|
 | `/xp convertir montant:` | Échange de l’XP contre des points de statistique, à répartir avec `/profil attribuer-stat` |
-| `/xp demande` | Ouvre un formulaire de demande d’XP pour une scène de RP |
+| `/xp demande` | Demande d’XP pour une scène de RP : choisit le type d’interaction, puis ouvre le formulaire |
 | `/jjk salon salon: [retirer]` | Définit le salon du staff qui reçoit les demandes *(administrateurs, relançable pour changer de salon)* |
 | `/jjk sauvegarde` | Télécharge une copie des fiches *(administrateurs)* |
 | `/jjk restaurer fichier: confirmer:` | Remet les fiches d’une sauvegarde *(administrateurs)* |
 
 - `/xp convertir` **consomme** l’XP : 1 XP = 1 point, le total baisse d’autant.
-- `/xp demande` demande le **type d’interaction** (interaction ou combat,
-  personnelle / sérieuse / profonde, ou mission), la **quantité d’XP attendue**
-  (1 à 100000), une **description** de la scène et le **lien du salon** où elle
-  s’est déroulée. Le joueur peut la lancer de n’importe où.
+- `/xp demande` se déroule en **deux temps**. Un premier message éphémère propose
+  le **type d’interaction** (interaction ou combat, personnelle / sérieuse /
+  profonde, ou mission) dans un menu déroulant ; le choix ouvre aussitôt le
+  formulaire, qui demande la **quantité d’XP attendue** (1 à 100000), une
+  **description** de la scène et le **lien du salon** où elle s’est déroulée. Le
+  joueur peut la lancer de n’importe où. (Le type est choisi avant la modale :
+  Discord n’accepte que des champs texte dans une modale, un menu déroulant y
+  étant refusé.)
 - La demande part dans le salon défini par `/jjk salon`, que le bot **rend visible du
   staff uniquement** (permission `@everyone` retirée, rôle `STAFF_ROLE_ID` réautorisé
   s’il est configuré). La commande se relance autant de fois qu’on veut : chaque appel
@@ -419,12 +423,30 @@ d’upload.
 Pour construire une archive propre, sans `.venv`, sans caches, sans données :
 
 ```bash
-python tools/package.py          # écrit dist/jjkbot-deploy.zip (~1,3 Mo, ~60 fichiers)
+python tools/package.py          # dist/jjkbot-deploy.zip (~1,3 Mo, ~60 fichiers)
 python tools/package.py --tar    # variante .tar.gz
+python tools/package.py --folder # dist/upload/  ← à glisser sur GitHub
 ```
 
 Cette archive est directement déposable sur l’hébergeur ; il ne reste qu’à lancer
 `pip install -r requirements.txt` puis `python main.py`. `dist/` est ignoré par Git.
+
+#### Envoi manuel sur GitHub (glisser-déposer)
+
+Si tu envoies par l’interface web de GitHub, **ne glisse jamais le dossier du projet
+entier** : il emporte le `.venv` (des milliers de fichiers, upload interminable) et
+surtout **`data/`**, ce qui met tes fiches dans le dépôt — au redéploiement, seules
+ces fiches-là reviennent, les autres sont perdues. Utilise plutôt
+`python tools/package.py --folder`, ouvre `dist/upload/`, **sélectionne tout son
+contenu** (pas le dossier) et dépose-le. Mieux encore, un `git push` classique
+respecte `.gitignore` et ne fait partir que le code, en incrémental.
+
+#### Après le clone sur l’hébergeur
+
+Le dépôt ne contient **pas** `data/` : après un « tout supprimer puis cloner », la
+base est donc vide. Conserve une copie de `data/profiles.json` et de `data/images/`,
+et remets-les après le clone (ou définis `DATA_DIR` vers un dossier persistant).
+`/jjk sauvegarde` te donne cette copie en un clic, `/jjk restaurer` la remet.
 
 > 💡 **Dépôt Git lourd ?** L’historique peut conserver d’anciens gros fichiers
 > (images supprimées, `__pycache__` autrefois suivis) et rendre le clone Wispbyte
@@ -476,6 +498,27 @@ process n’a reçu aucun token — ni le clone git ni l’installation des dép
 Après un redéploiement qui reclone tout le dossier, vérifie que le `.env` est toujours là —
 garde une copie quelque part. Le démarrage doit rester `python main.py` : **jamais** `--sync`.
 
+#### `429 Too Many Requests` / Cloudflare « Error 1015 » au démarrage
+
+Si la console affiche une page HTML **Cloudflare « Error 1015 »** avec
+`You are being rate limited`, Discord refuse **temporairement** les connexions depuis
+l’IP de l’hébergeur (souvent partagée entre plusieurs clients). Ce n’est **pas** un bug du
+bot, ni un problème de token : la même IP est bloquée pour tout le monde pendant un moment.
+
+Le piège est la **boucle** : le crash fait sortir le process en code 1, l’hébergeur le
+relance en quelques secondes, la nouvelle tentative rapprochée **relance le compteur et
+prolonge le blocage**. Depuis cette version, le bot gère le cas tout seul : il affiche une
+explication claire, patiente (2 min, 5 min, 15 min, puis 30 min entre les essais) et se
+connecte dès que Discord lève la limite — sans que tu aies à redémarrer quoi que ce soit.
+
+Si tu veux forcer la main :
+
+1. **Arrête** le serveur (pour ne plus insister) et laisse passer ~1 h.
+2. Vérifie qu’**une seule** instance du bot tourne : un bot lancé en local avec le même
+token fait aussi grimper le compteur.
+3. Redémarre une fois. Si le 1015 revient encore, c’est l’IP partagée de l’hébergeur qui est
+flaggée : contacte le support / change d’offre pour obtenir une IP différente.
+
 ### Ressources et persistance
 
 - Le bot consomme environ **60 Mo de RAM** : les 512 Mo d’une offre gratuite sont largement suffisants.
@@ -492,7 +535,8 @@ python -m unittest discover -s tests
 Les tests couvrent la mise en forme des embeds, la résolution des emojis, la migration
 des fiches, l’écriture UTF-8, l’intégrité de l’arbre de compétences, les règles du
 Black Flash, le nuancier de couleurs, le stockage des demandes d’XP (et le crédit
-unique au clic) et les attentes de session. Aucune connexion à Discord n’est nécessaire.
+unique au clic), les attentes de session et la reprise sur refus temporaire de Discord
+(429 / Cloudflare 1015). Aucune connexion à Discord n’est nécessaire.
 
 ## Aperçu du rendu
 

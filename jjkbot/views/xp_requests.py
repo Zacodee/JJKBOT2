@@ -34,7 +34,11 @@ logger = logging.getLogger(__name__)
 # changer sans accepter que les messages déjà postés cessent de répondre.
 APPROVE_CUSTOM_ID = "xp:approuver"
 DECLINE_CUSTOM_ID = "xp:decliner"
-INTERACTION_CUSTOM_ID = "xp:type"
+
+# Le type d’interaction se choisit AVANT la modale. Discord n’accepte que des
+# champs texte (type 4) dans une modale : un menu déroulant (type 3) y déclenche
+# une erreur 50035 « Invalid Form Body ». Le menu vit donc dans une vue normale.
+TYPE_SELECT_CUSTOM_ID = "xp:type"
 
 FOOTER = "Jujutsu Kaisen RP • Demandes d’XP"
 
@@ -261,25 +265,17 @@ async def _notify_player(
 
 
 class XPDemandModal(BaseModal):
-    """Formulaire de demande d’XP, ouvert par `/xp demande`."""
+    """Formulaire de demande d’XP, ouvert APRÈS le choix du type d’interaction.
 
-    def __init__(self, guild: discord.Guild):
+    La modale ne contient que des champs texte (`TextInput`, type 4) : c’est la
+    seule famille de composants que Discord accepte ici. Le type est donc choisi
+    en amont, par le menu de `XPInteractionTypeView`.
+    """
+
+    def __init__(self, guild: discord.Guild | None, interaction_type: str):
         super().__init__(title="Demande d’XP")
         self.guild = guild
-
-        # Un menu déroulant dans une modale : discord.py l’enveloppe
-        # automatiquement dans son ActionRow (voir `Modal.to_components`).
-        self.interaction_type = discord.ui.Select(
-            custom_id=INTERACTION_CUSTOM_ID,
-            placeholder="Type d’interaction",
-            min_values=1,
-            max_values=1,
-            options=[
-                discord.SelectOption(label=item.label, value=item.id)
-                for item in xp_rules.INTERACTION_TYPES
-            ],
-        )
-        self.add_item(self.interaction_type)
+        self.interaction_type = interaction_type
 
         self.amount = discord.ui.TextInput(
             label="XP attendue",
@@ -347,7 +343,7 @@ class XPDemandModal(BaseModal):
             guild_id,
             interaction.user.id,
             user_name=interaction.user.display_name,
-            interaction_type=self.interaction_type.values[0],
+            interaction_type=self.interaction_type,
             amount=amount,
             description=str(self.scene.value).strip(),
             channel_link=str(self.channel_link.value or "").strip(),
@@ -374,6 +370,41 @@ class XPDemandModal(BaseModal):
             f"Ta demande **{request.id}** a été transmise au staff "
             f"({amount} XP attendus). Tu seras prévenu en message privé de la décision.",
         )
+
+
+class XPInteractionTypeSelect(discord.ui.Select):
+    """Menu du type d’interaction, affiché AVANT la modale.
+
+    Le choix de l’utilisateur ouvre directement le formulaire.
+    """
+
+    def __init__(self, guild: discord.Guild | None) -> None:
+        super().__init__(
+            custom_id=TYPE_SELECT_CUSTOM_ID,
+            placeholder="Type d’interaction",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(label=item.label, value=item.id)
+                for item in xp_rules.INTERACTION_TYPES
+            ],
+        )
+        self.guild = guild
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(XPDemandModal(self.guild, self.values[0]))
+
+
+class XPInteractionTypeView(BaseView):
+    """Vue éphémère ouverte par `/xp demande` : on y choisit le type d’interaction.
+
+    Une fois le type retenu, `XPInteractionTypeSelect` ouvre la modale. Séparer
+    les deux étapes est une contrainte de l’API, pas un choix de design.
+    """
+
+    def __init__(self, guild: discord.Guild | None) -> None:
+        super().__init__(timeout=180)
+        self.add_item(XPInteractionTypeSelect(guild))
 
 
 async def _staff_channel(interaction: discord.Interaction, guild_id: int) -> discord.abc.Messageable | None:

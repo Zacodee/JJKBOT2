@@ -7,6 +7,7 @@
 import argparse
 import asyncio
 import logging
+import time
 
 import discord
 from discord import app_commands
@@ -27,6 +28,42 @@ EXTENSIONS: tuple[str, ...] = (
 )
 
 SWEEP_INTERVAL = 5 * 60  # Purge des attentes expirées.
+
+# Délais (secondes) entre deux tentatives de connexion quand Discord refuse
+# temporairement l’IP de l’hébergeur (HTTP 429 / Cloudflare « Error 1015 »).
+# Sans cette attente, chaque crash est suivi d’un redémarrage automatique en
+# quelques secondes : la nouvelle tentative REPOUSSE le blocage, qui se
+# prolonge indéfiniment. On espace donc les essais, puis on garde le dernier
+# palier.
+RATE_LIMIT_BACKOFF = (120, 300, 900, 1800)
+
+# Message expliqué au démarrage quand Discord refuse temporairement la connexion.
+RATE_LIMIT_EXPLANATION = (
+    "Discord refuse la connexion depuis cette machine : HTTP 429 / Cloudflare « Error 1015 ». "
+    "Ce n’est PAS un bug du bot — Discord bloque TEMPORAIREMENT l’IP de l’hébergeur "
+    "(souvent partagée) après trop de tentatives de connexion rapprochées. "
+    "Chaque essai immédiat relance le compteur et prolonge le blocage. "
+    "Le bot va donc attendre entre chaque tentative, puis se connecter tout seul "
+    "dès que Discord lève le blocage (généralement sous 1 h). "
+    "Si le blocage dure plus longtemps, arrête le serveur (pour ne plus insister), "
+    "vérifie qu’une SEULE instance du bot tourne (aucun autre déploiement local actif), "
+    "puis redémarre dans une heure."
+)
+
+
+def _is_rate_limited(error: BaseException) -> bool:
+    """Vrai si l’erreur est un refus temporaire de Discord (429 / Cloudflare 1015).
+
+    Une réponse HTTP explicite autre que 429 (401 token invalide, 403…) est
+    définitive : on ne la réessaie pas.
+    """
+    status = getattr(error, "status", None)
+    if status is not None:
+        return status == 429
+    # Erreur sans statut HTTP : on inspecte le texte au cas où le refus remonte
+    # encapsulé (« Error 1015 », « rate limited »…).
+    text = str(getattr(error, "text", "") or error).lower()
+    return "error 1015" in text or "too many requests" in text or "rate limit" in text
 
 
 class JJKBot(commands.Bot):
@@ -191,6 +228,38 @@ class JJKBot(commands.Bot):
             logger.exception("Impossible d’enregistrer les commandes slash.")
 
 
+def _run_with_retry(*, sync_only: bool) -> None:
+    """Démarre le bot ; en cas de 429 / 1015, patiente puis réessaie.
+
+    La patience est le correctif : sur un hébergeur qui relance le process dès
+    qu’il meurt, une sortie immédiate produit une boucle de connexions qui
+    entretient le blocage Cloudflare. En dormant entre deux essais, le bot
+    reste vivant et se connecte de lui-même dès que Discord lève la limite.
+    """
+    attempt = 0
+    while True:
+        bot = JJKBot(sync_only=sync_only)
+        try:
+            bot.run(config.token(), log_handler=None)
+            return
+        except KeyboardInterrupt:
+            logger.info("Arrêt demandé.")
+            return
+        except discord.errors.HTTPException as error:
+            if not _is_rate_limited(error):
+                raise
+            attempt += 1
+            delay = RATE_LIMIT_BACKOFF[min(attempt - 1, len(RATE_LIMIT_BACKOFF) - 1)]
+            logger.error(
+                "%s\nTentative n°%d — nouvelle tentative dans %d min %02d s.",
+                RATE_LIMIT_EXPLANATION,
+                attempt,
+                delay // 60,
+                delay % 60,
+            )
+            time.sleep(delay)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="jjkbot",
@@ -212,13 +281,11 @@ def main() -> None:
 
     try:
         config.check_required()
-        bot = JJKBot(sync_only=args.sync)
-        bot.run(config.token(), log_handler=None)
     except config.ConfigError as error:
         logger.error("%s", error)
         raise SystemExit(1) from error
-    except KeyboardInterrupt:
-        logger.info("Arrêt demandé.")
+
+    _run_with_retry(sync_only=args.sync)
 
 
 if __name__ == "__main__":

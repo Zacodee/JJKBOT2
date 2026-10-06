@@ -7,6 +7,7 @@ import unittest.mock
 from pathlib import Path
 
 from jjkbot import config
+from jjkbot.content import xp as xp_rules
 from jjkbot.storage import requests as requests_module
 from jjkbot.storage import settings as settings_module
 from jjkbot.storage.profiles import Profile, get_profile, save_profile
@@ -180,6 +181,65 @@ class RequestStorageTests(unittest.IsolatedAsyncioTestCase):
         # Une base corrompue repart vide sans lever : une demande perdue ne doit
         # pas empêcher le bot de fonctionner.
         self.assertIsNone(await requests_module.get_request("abc"))
+
+
+class _FakeModalResponse:
+    def __init__(self):
+        self.modal = None
+
+    async def send_modal(self, modal):
+        self.modal = modal
+
+
+class _FakeComponentInteraction:
+    def __init__(self):
+        self.response = _FakeModalResponse()
+
+
+class DemandFormTests(unittest.IsolatedAsyncioTestCase):
+    """Le formulaire de demande doit respecter les contraintes des modales.
+
+    Discord n’accepte que des champs texte (type 4) dans une modale : un menu
+    déroulant placé dedans fait échouer l’ouverture de `/xp demande` avec
+    « Value of field "type" must be one of (4,) » (erreur 50035).
+    """
+
+    def test_modale_ne_contient_que_des_champs_texte(self):
+        modal = xp_views.XPDemandModal(None, "mission")
+
+        components = modal.to_components()
+
+        self.assertTrue(components)
+        self.assertLessEqual(len(components), 5)  # limite Discord d’une modale
+        for row in components:
+            self.assertEqual(row["type"], 1)  # ActionRow
+            self.assertEqual(len(row["components"]), 1)
+            self.assertEqual(row["components"][0]["type"], 4)  # TextInput
+
+    def test_modale_reprend_le_type_choisi(self):
+        modal = xp_views.XPDemandModal(None, "combat_profond")
+
+        self.assertEqual(modal.interaction_type, "combat_profond")
+
+    async def test_menu_propose_tous_les_types(self):
+        view = xp_views.XPInteractionTypeView(None)
+        select = view.children[0]
+
+        self.assertEqual(
+            [option.value for option in select.options],
+            [item.id for item in xp_rules.INTERACTION_TYPES],
+        )
+
+    async def test_choisir_un_type_ouvre_la_modale(self):
+        view = xp_views.XPInteractionTypeView(None)
+        select = view.children[0]
+        select._values = ["combat_serieux"]
+
+        interaction = _FakeComponentInteraction()
+        await select.callback(interaction)
+
+        self.assertIsInstance(interaction.response.modal, xp_views.XPDemandModal)
+        self.assertEqual(interaction.response.modal.interaction_type, "combat_serieux")
 
 
 class _FakeResponse:
