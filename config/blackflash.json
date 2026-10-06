@@ -1,0 +1,14 @@
+{
+  "Fièvre": {
+    "bonus": 5
+  },
+  "Béni de l'étincelle": {
+    "base": 20,
+    "exclusive": true,
+    "aliases": ["beni etincelle", "beni de l etincelle"]
+  },
+  "Adepte du Black Flash": {
+    "base": 10,
+    "aliases": ["adepte du blackflash", "adepte black flash", "adepte bf", "adepte du bf", "adepte du rayon noir", "adepte rayon noir", "adepte du rayon noire", "adepte rayon noire"]
+  }
+}

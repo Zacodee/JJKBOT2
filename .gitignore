@@ -1,0 +1,33 @@
+# Configuration et données locales
+.env
+data/profiles.json
+data/images/
+
+# Journal du bot
+bot.log
+
+# Aperçu local généré par tools/preview.py, preview_blackflash.py, preview_modeles.py
+tools/preview.html
+tools/blackflash.html
+tools/modeles.html
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Archives et dossiers de déploiement : jamais dans le dépôt.
+# Le `.venv` (des milliers de fichiers) et les caches ne doivent pas partir à
+# l'hébergeur — utilise `python tools/package.py` pour une archive propre.
+dist/
+*.zip
+*.rar
+*.tar.gz
+legacy-node-backup.tar.gz
+
+# Outils de l’éditeur
+.freebuff/
+.vscode/
+.idea/
