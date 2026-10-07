@@ -150,6 +150,27 @@ def entry(
     return f"{emoji(key, guild)} **{label} :** {value_code(value)}"
 
 
+def mention_entry(
+    key: str,
+    label: str,
+    user_id: int,
+    guild=None,
+    name: str = "",
+) -> str:
+    """Ligne d’information dont la valeur est une **mention d’utilisateur**.
+
+    `entry` encadre la valeur d’accents graves : parfait pour une donnée brute,
+    désastreux pour une mention, car Discord ne résout RIEN dans du code inline
+    — `<@123>` s’y affiche littéralement, au lieu du pseudo cliquable. La mention
+    est donc laissée ici **hors** du `code`. Le nom enregistré au moment de la
+    demande reste rappelé entre parenthèses : le joueur peut avoir changé de
+    pseudo depuis, et le staff retrouve ainsi le nom déclaré.
+    """
+    mention = f"<@{int(user_id)}>"
+    suffix = f" (`{_clean_value(name)}`)" if isinstance(name, str) and name.strip() else ""
+    return f"{emoji(key, guild)} **{label} :** {mention}{suffix}"
+
+
 def field_label(key: str, text: str, guild=None) -> str:
     """Libellé de champ en petit titre souligné : `### 🪪 __Identité__`.
 

@@ -242,6 +242,48 @@ class DemandFormTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(interaction.response.modal.interaction_type, "combat_serieux")
 
 
+class PlayerLabelTests(unittest.TestCase):
+    """Le joueur doit apparaître en **pseudo cliquable**, jamais en `<@id>` brut.
+
+    Les libellés passaient par `theme.entry`, qui encadre la valeur d’accents
+    graves ; or Discord ne résout aucune mention dans du code inline : le staff
+    lisait donc `<@651499309933658116>` au lieu de la mention colorée.
+    """
+
+    def _request(self, **overrides):
+        data = dict(
+            id="3b035882",
+            guild_id=1,
+            user_id=651499309933658116,
+            user_name="izouk",
+            interaction_type="interaction_personnelle",
+            amount=67,
+            description="Test ne valider pas cette demande",
+        )
+        data.update(overrides)
+        return requests_module.XPRequest(**data)
+
+    def test_demande_affiche_la_mention_du_joueur(self):
+        embed = xp_views.build_request_embed(self._request())
+
+        self.assertIn("<@651499309933658116>", embed.description)
+        self.assertIn("izouk", embed.description)
+        # Hors du `code` : c’est ce qui la fait résoudre en pseudo cliquable.
+        self.assertNotIn("`<@", embed.description)
+
+    def test_decision_affiche_la_mention_du_joueur(self):
+        request = self._request(
+            status=requests_module.STATUS_APPROVED,
+            decided_by=7,
+            decided_by_name="izouk",
+        )
+
+        embed = xp_views.build_decision_embed(request)
+
+        self.assertIn("<@651499309933658116>", embed.description)
+        self.assertNotIn("`<@", embed.description)
+
+
 class _FakeResponse:
     def __init__(self):
         self.sent = None

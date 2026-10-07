@@ -51,10 +51,6 @@ def build_request_embed(
     guild: discord.Guild | None = None,
 ) -> discord.Embed:
     """Embed lu par le staff : tout ce qu’il faut pour trancher d’un coup d’œil."""
-    author_label = f"<@{request.user_id}>"
-    if request.user_name:
-        author_label = f"{author_label} (`{request.user_name}`)"
-
     embed = discord.Embed(
         colour=theme.color(theme.SECTION_DEMANDES),
         description=theme.blocks(
@@ -66,7 +62,7 @@ def build_request_embed(
             ),
             theme.highlight("xp", f"XP demandée — **{request.amount}**", guild),
             theme.entry("categorie", "Type d’interaction", xp_rules.label_of(request.interaction_type), guild=guild),
-            theme.entry("profil", "Joueur", author_label, guild=guild),
+            theme.mention_entry("profil", "Joueur", request.user_id, guild, name=request.user_name),
             theme.divider(),
             theme.field_label("aide", "Description de la scène", guild),
             request.description or "*Aucune description fournie.*",
@@ -93,7 +89,7 @@ def build_decision_embed(
     lines = [
         theme.title("demande_xp", f"Demande d’XP — {headline}", guild, suffix=f" : `{request.id}`"),
         f"{theme.emoji(key, guild)} **{headline}** par {decider}.",
-        theme.entry("profil", "Joueur", f"<@{request.user_id}>", guild=guild),
+        theme.mention_entry("profil", "Joueur", request.user_id, guild),
         theme.entry("categorie", "Type d’interaction", xp_rules.label_of(request.interaction_type), guild=guild),
     ]
     if approved:

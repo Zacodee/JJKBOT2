@@ -10,6 +10,7 @@ from discord.ext import commands
 from jjkbot import config, emojis as emojis_module, permissions, theme
 from jjkbot.content import blackflash as blackflash_rules
 from jjkbot.content import renaissance as renaissance_rules
+from jjkbot.content import stats as stats_rules
 from jjkbot.storage import profiles as profiles_module
 from jjkbot.storage import settings
 from jjkbot.storage.profiles import get_profile, save_profile
@@ -105,6 +106,7 @@ def build_help_embed(guild: discord.Guild | None = None) -> discord.Embed:
                 "`/profil reset` • profil complet, statistiques ou compétences",
                 "`/jjk blackflash-chance` • plancher et bonus de Black Flash d’un joueur",
                 "`/jjk salon` • salon réservé au staff qui reçoit les demandes d’XP",
+                "`/jjk eo` • Réserve d’EO d’un joueur, après validation de sa fiche",
                 "`/jjk sauvegarde` et `/jjk restaurer` • copier ou remettre les fiches",
                 "`/jjk emojis` • vérifier les emojis du serveur",
             ],
@@ -129,6 +131,54 @@ def build_help_embed(guild: discord.Guild | None = None) -> discord.Embed:
     if config.HELP_GIF_URL:
         embed.set_image(url=config.HELP_GIF_URL)
     return embed
+
+
+async def set_reserve_eo(
+    interaction: discord.Interaction,
+    joueur: discord.Member,
+    montant: int,
+) -> None:
+    """Fixe la Réserve d’EO d’un joueur, une fois sa fiche RP validée.
+
+    « Réserve d’EO » est la seule statistique `fixed` : aucun point de
+    statistique ne s’y dépense (voir `content.stats`). C’est donc le staff
+    administrateur qui la pose ici, après avoir validé la fiche du joueur.
+    """
+    if not await permissions.ensure_admin(interaction):
+        return
+
+    profile = await get_profile(interaction.guild_id, joueur.id)
+    if profile is None:
+        await interaction.response.send_message(
+            embed=theme.notice_embed(
+                theme.SECTION_ALERTE,
+                "alerte",
+                f"{joueur.display_name} n’a pas encore de fiche : elle doit exister "
+                "avant que sa Réserve d’EO puisse être fixée.",
+                interaction.guild,
+            ),
+            ephemeral=True,
+        )
+        return
+
+    stat = stats_rules.RESERVE_EO
+    previous = profile.stats.get(stat.id, 0)
+    profile.stats[stat.id] = montant
+    profile.touch()
+    await save_profile(interaction.guild_id, joueur.id, profile)
+
+    await interaction.response.send_message(
+        embed=theme.notice_embed(
+            theme.SECTION_STATS,
+            stat.emoji,
+            f"**{stat.label}** de {joueur.mention} fixée à **{montant}** "
+            f"(avant : {previous}). Elle est propre au personnage : aucun point ne "
+            "s’y dépense, `/profil attribuer-stat` ne la touche jamais, et relancer "
+            "`/jjk eo` la corrige.",
+            interaction.guild,
+        ),
+        ephemeral=True,
+    )
 
 
 def _chunk_lines(lines: list[str], limit: int = 1000) -> list[str]:
@@ -347,6 +397,29 @@ class JjkCog(
             situation.value if situation is not None else renaissance_rules.DEFAULT_SITUATION,
         )
 
+
+    # --- Réserve d’EO (administrateurs) ----------------------------------
+
+    @app_commands.command(
+        name="eo",
+        description=(
+            "Fixer la Réserve d’EO d’un joueur après validation de sa fiche "
+            "(administrateurs)"
+        ),
+    )
+    @app_commands.describe(
+        joueur="Le joueur dont la fiche RP vient d’être validée",
+        montant="La Réserve d’EO définitive de son personnage",
+    )
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def eo(
+        self,
+        interaction: discord.Interaction,
+        joueur: discord.Member,
+        montant: app_commands.Range[int, 0, stats_rules.MAX_RESERVE_EO],
+    ) -> None:
+        await set_reserve_eo(interaction, joueur, montant)
 
     # --- Salon des demandes d’XP (administrateurs) -----------------------
 

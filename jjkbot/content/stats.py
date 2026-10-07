@@ -24,6 +24,9 @@ class StatDefinition:
     fixed: bool = False
 
 
+# Identifiant de la statistique fixée à la création du personnage.
+RESERVE_EO_ID = "reserveEO"
+
 STAT_DEFINITIONS: tuple[StatDefinition, ...] = (
     StatDefinition(id="force", label="Force", emoji="force"),
     StatDefinition(id="resistance", label="Résistance", emoji="resistance"),
@@ -32,12 +35,20 @@ STAT_DEFINITIONS: tuple[StatDefinition, ...] = (
     StatDefinition(id="sortieEO", label="Sortie d'EO", emoji="sortie_eo"),
     # En dernière position et marquée `fixed` : la page Statistiques la range
     # dans son propre bloc, après les statistiques que les points font vivre.
-    StatDefinition(id="reserveEO", label="Réserve d'EO", emoji="reserve_eo", fixed=True),
+    StatDefinition(id=RESERVE_EO_ID, label="Réserve d'EO", emoji="reserve_eo", fixed=True),
 )
 
 DEFAULT_STATS: dict[str, int] = {stat.id: 0 for stat in STAT_DEFINITIONS}
 
 STATS_BY_ID: dict[str, StatDefinition] = {stat.id: stat for stat in STAT_DEFINITIONS}
+
+# La Réserve d’EO est la seule statistique `fixed` : aucun point ne s’y dépense,
+# c’est le staff qui la fixe à la validation de la fiche RP (voir `/jjk eo`).
+RESERVE_EO: StatDefinition = STATS_BY_ID[RESERVE_EO_ID]
+
+# Borne haute de la Réserve d’EO posée par le staff, alignée sur les autres
+# commandes de statistiques.
+MAX_RESERVE_EO = 100000
 
 # Statistiques attribuables : seules elles acceptent des points de statistique.
 SPENDABLE_STATS: tuple[StatDefinition, ...] = tuple(

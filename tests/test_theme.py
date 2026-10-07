@@ -57,6 +57,18 @@ class ThemeRenderingTests(unittest.TestCase):
         self.assertEqual(rendered.count("`"), 2)
         self.assertIn("Fle’au", rendered)
 
+    def test_mention_entry_laisse_la_mention_hors_du_code(self):
+        # Une mention entre accents graves n’est PAS résolue par Discord : le
+        # staff lisait `<@651499309933658116>` au lieu du pseudo cliquable. La
+        # mention reste donc hors du `code`, seul le nom déclaré est encadré.
+        rendered = theme.mention_entry("profil", "Joueur", 651499309933658116, name="izouk")
+
+        self.assertEqual(rendered, "📛 **Joueur :** <@651499309933658116> (`izouk`)")
+        self.assertNotIn("`<@", rendered)
+
+    def test_mention_entry_sans_nom_declare(self):
+        self.assertEqual(theme.mention_entry("profil", "Joueur", 42), "📛 **Joueur :** <@42>")
+
     def test_blocks_separe_par_une_ligne_vide(self):
         blob = theme.blocks("a", None, "b")
 

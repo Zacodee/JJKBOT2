@@ -156,7 +156,8 @@ Les six statistiques sont définies dans `jjkbot/content/stats.py` : **Force**,
 les points de statistique, tandis que **Réserve d’EO** est **figée à la création**
 (« fixed ») : aucun point n’y est dépensé, elle n’entre ni dans le total réparti ni
 dans les barres, et la page Statistiques l’affiche dans un bloc séparé, sous un
-filet et avec un cadenas. Seul un staff peut la modifier en éditant la fiche.
+filet et avec un cadenas. Elle se pose à la **validation de la fiche RP**, par un
+administrateur, avec `/jjk eo` (voir plus bas).
 
 ### Compétences
 
@@ -223,6 +224,21 @@ qu’aux membres ayant la permission « Administrateur », et le bot revérifie 
   `DATA_DIR/images/` et doivent être copiées séparément (via le gestionnaire de
   fichiers de l’hébergeur). Une image manquante n’empêche pas la fiche de s’afficher, la
   photo réapparaîtra seulement après réenvoi avec `/profil image`.
+
+### Réserve d’EO (administrateurs)
+
+| Commande | Effet |
+|---|---|
+| `/jjk eo joueur: montant:` | Fixe la **Réserve d’EO** d’un joueur, après validation de sa fiche RP *(administrateurs)* |
+
+- La **Réserve d’EO** est la seule statistique **figée** du personnage : elle ne se
+  répartit pas en points (`/profil attribuer-stat` la refuse explicitement). C’est donc
+  l’administrateur qui la pose une fois la fiche jouée et validée, avec `/jjk eo`.
+- `montant` est une **valeur absolue** (0 à 100000), pas un ajout : relancer la commande
+  corrige une Réserve mal saisie. Le montant précédent est rappelé dans la
+  confirmation, et le joueur doit avoir une fiche (`/profil creer`) pour recevoir son EO.
+- Comme les autres statistiques, elle est stockée dans la fiche (`stats.reserveEO`) :
+  elle suit la sauvegarde et la restauration de `profiles.json`.
 
 ### Black Flash
 
@@ -307,6 +323,7 @@ relèvent. La correspondance vit dans [config/blackflash.json](config/blackflash
 | `/jjk emojis` | Diagnostic des emojis du serveur *(staff)* |
 | `/jjk blackflash-chance` | Plancher et bonus de Black Flash d’un joueur *(staff)* |
 | `/jjk renaissance` | Tente la Renaissance en Esprit Vengeur, à la mort définitive du personnage |
+| `/jjk eo` | Réserve d’EO d’un joueur, après validation de sa fiche *(administrateurs)* |
 | `/jjk salon` | Salon du staff qui reçoit les demandes d’XP *(administrateurs)* |
 | `/jjk sauvegarde` | Copie téléchargeable des fiches *(administrateurs)* |
 | `/jjk restaurer` | Remet les fiches d’une sauvegarde *(administrateurs)* |
