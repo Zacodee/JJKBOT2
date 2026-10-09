@@ -7,7 +7,12 @@ import logging
 import discord
 
 from jjkbot import emojis as emojis_module, sessions, theme
-from jjkbot.content.stats import DEFAULT_STATS, STAT_DEFINITIONS
+from jjkbot.content import blackflash as blackflash_rules
+from jjkbot.content.stats import (
+    DEFAULT_STATS,
+    STAT_DEFINITIONS,
+    SUBSTAT_DEFINITIONS,
+)
 from jjkbot.storage import images
 from jjkbot.storage.profiles import (
     Profile,
@@ -102,16 +107,59 @@ def build_profile_embeds(
         # autres barres sous la sienne (voir `StatDefinition.fixed`).
         spendable = [stat for stat in STAT_DEFINITIONS if not stat.fixed]
         fixed = [stat for stat in STAT_DEFINITIONS if stat.fixed]
+
+        # Buff de Noirceur (Black Flash) : +10 % à toutes les statistiques
+        # attribuables tant qu’il reste des tours. La Réserve d’EO, figée, n’en
+        # profite jamais (`SPENDABLE_STATS`). C’est ce qui rend le buff visible
+        # ici, comme le joueur le voit sur `/profil voir`.
+        buff_turns = getattr(profile, "blackflash_buff_turns", 0)
+        effective = blackflash_rules.apply_stat_buff(profile.stats, buff_turns)
+        # « Total réparti » reste le total des **points dépensés** (statistiques
+        # de base) ; les barres, elles, se partagent les valeurs buffées pour
+        # rester proportionnelles à ce que le joueur lit.
         total = sum(profile.stats.get(stat.id, 0) for stat in spendable)
+        bar_total = sum(effective.get(stat.id, 0) for stat in spendable)
+
+        def stat_line(stat) -> str:
+            """Ligne d’une statistique : valeur (buffée) et barre de répartition."""
+            base = profile.stats.get(stat.id, 0)
+            value = effective.get(stat.id, 0)
+            bonus = f" **(+{value - base})**" if value != base else ""
+            return (
+                f"{theme.entry(stat.emoji, stat.label, value, guild=guild)}{bonus} "
+                f"{theme.progress_bar(value, bar_total or 1)}"
+            )
 
         # Une ligne par statistique, HORS bloc de code : Discord ne rend les
         # emojis custom du serveur que dans le texte normal — dans un ```
         # ils s’afficheraient en texte brut, d’où l’emoji de repli imposé.
-        lines = [
-            f"{theme.entry(stat.emoji, stat.label, profile.stats.get(stat.id, 0), guild=guild)} "
-            f"{theme.progress_bar(profile.stats.get(stat.id, 0), total or 1)}"
-            for stat in spendable
+        lines = [stat_line(stat) for stat in spendable]
+
+        buff_note = (
+            theme.highlight(
+                "blackflash",
+                f"**Rayon Noir** — +{blackflash_rules.BUFF_STAT_PERCENT} % à toutes les "
+                f"stats (Réserve d’EO exceptée) • **{buff_turns}** tour(s) restant(s)",
+                guild,
+            )
+            if buff_turns > 0
+            else None
+        )
+
+        # Sous-statistiques : elles suivent leur statistique principale et ne
+        # s’achètent jamais avec des points. Elles affichent donc la valeur déjà
+        # buffée, comme la statistique dont elles découlent. Aucune description
+        # n’est écrite ici : leurs effets se découvrent en RP, guidés par le staff.
+        substat_lines = [
+            theme.entry(
+                substat.emoji, substat.label, effective.get(substat.source, 0), guild=guild
+            )
+            for substat in SUBSTAT_DEFINITIONS
         ]
+        substat_block = theme.blocks(
+            theme.heading("Sous-statistiques", 3, guild, "stats"),
+            "\n".join(substat_lines),
+        )
 
         # Statistiques gelées : même ligne d’information, mais séparées par un
         # filet, sans barre de progression et cadenassées — aucun point n’y est
@@ -131,9 +179,11 @@ def build_profile_embeds(
                 theme.title("stats", "Statistiques", guild, suffix=f" : {profile.name}"),
                 theme.highlight("points", f"Points à attribuer — **{profile.stat_points}**", guild),
                 theme.highlight("progression", f"Total réparti — **{total}** point(s)", guild),
+                buff_note,
                 theme.divider(),
                 "\n".join(lines),
                 locked_block,
+                substat_block,
             ),
         )
     else:

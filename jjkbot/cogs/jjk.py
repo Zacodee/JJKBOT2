@@ -10,6 +10,7 @@ from discord.ext import commands
 from jjkbot import config, emojis as emojis_module, permissions, theme
 from jjkbot.content import blackflash as blackflash_rules
 from jjkbot.content import renaissance as renaissance_rules
+from jjkbot.content import train as train_rules
 from jjkbot.content import stats as stats_rules
 from jjkbot.storage import profiles as profiles_module
 from jjkbot.storage import settings
@@ -76,6 +77,16 @@ def build_help_embed(guild: discord.Guild | None = None) -> discord.Embed:
             ],
         ),
         (
+            f"{e('train')} Entraînement",
+            [
+                f"`/train` • {e('xp')} entraîne-toi une fois par semaine pour gagner "
+                f"**{train_rules.TRAIN_XP} XP**",
+                f"{e('page_stats')} tes statistiques affichent le buff de Noirceur d'un "
+                "Black Flash réussi, et les sous-statistiques (Perception, Vitesse de "
+                "Projectile, Perception occulte) suivent tes stats principales.",
+            ],
+        ),
+        (
             f"{e('blackflash')} Black Flash",
             [
                 f"`/jjk blackflash` • {e('blackflash_chance')} tente le coup rarissime : "
@@ -85,6 +96,12 @@ def build_help_embed(guild: discord.Guild | None = None) -> discord.Embed:
                 f"{blackflash_rules.BASE_CHANCE}% quand le combat est fini",
                 "Certains traits relèvent cette base (ex. fièvre, éveil du Black Flash) : "
                 "le staff les reconnaît automatiquement ; un raté y revient.",
+                f"{e('blackflash')} **Record Man du Rayon Noir** • "
+                f"{blackflash_rules.RECORD_STREAK} Black Flash consécutifs dans un même "
+                "combat te donnent ce titre, à toi et pour de bon : "
+                f"**+{blackflash_rules.RECORD_BONUS}%** de chance à vie, "
+                f"**+{blackflash_rules.MORTAL_RECORD_BONUS}%** en `Combat Mortel` "
+                "(option `mortel` de `/jjk blackflash`, réservée aux recordmen).",
             ],
         ),
         (
@@ -105,6 +122,10 @@ def build_help_embed(guild: discord.Guild | None = None) -> discord.Embed:
                 "`/competences xp` • expérience",
                 "`/profil reset` • profil complet, statistiques ou compétences",
                 "`/jjk blackflash-chance` • plancher et bonus de Black Flash d’un joueur",
+                "`/blackflash chance` et `/blackflash record` • forcer la chance d’un "
+                "joueur et gérer son titre de recordman, pour tester l’évènement",
+                "`/blackflash buff` • voir, fixer ou retirer le buff de stats d’un joueur",
+                "`/train-reset` • rendre son entraînement hebdomadaire à un joueur",
                 "`/jjk salon` • salon réservé au staff qui reçoit les demandes d’XP",
                 "`/jjk eo` • Réserve d’EO d’un joueur, après validation de sa fiche",
                 "`/jjk sauvegarde` et `/jjk restaurer` • copier ou remettre les fiches",
@@ -278,9 +299,17 @@ class JjkCog(
             f"+{blackflash_rules.CHANCE_STEP}% par succès, retour à la base si tu rates"
         ),
     )
+    @app_commands.describe(
+        mortel=(
+            "Combat Mortel : le buff du recordman passe à "
+            f"+{blackflash_rules.MORTAL_RECORD_BONUS}% (réservé au détenteur du record)"
+        )
+    )
     @app_commands.guild_only()
-    async def blackflash(self, interaction: discord.Interaction) -> None:
-        await blackflash_views.send_blackflash(interaction)
+    async def blackflash(
+        self, interaction: discord.Interaction, mortel: bool = False
+    ) -> None:
+        await blackflash_views.send_blackflash(interaction, mortal=mortel)
 
     @app_commands.command(
         name="blackflash-reset",
@@ -352,14 +381,27 @@ class JjkCog(
 
         profile.touch()
         profile = await save_profile(interaction.guild_id, joueur.id, profile)
+        # Le bonus du recordman vient de sa meilleure série (un titre personnel,
+        # définitif) et non de l’exception du staff : le rappeler ici évite de
+        # croire à une valeur oubliée en voyant une base effective plus haute.
+        record_bonus = (
+            blackflash_rules.record_bonus()
+            if profile.blackflash_record >= blackflash_rules.RECORD_STREAK
+            else 0
+        )
         effective = blackflash_rules.effective_base(
-            profile.traits, profile.blackflash_base, profile.blackflash_bonus
+            profile.traits,
+            profile.blackflash_base,
+            profile.blackflash_bonus,
+            record_bonus,
         )
         override = (
             f"base `{profile.blackflash_base}` • bonus `{profile.blackflash_bonus}`"
             if profile.blackflash_base is not None or profile.blackflash_bonus
             else "aucune exception : traits de la fiche uniquement"
         )
+        if record_bonus:
+            override += f" • recordman du Rayon Noir (+{record_bonus})"
         await interaction.response.send_message(
             embed=theme.notice_embed(
                 theme.SECTION_BLACKFLASH,

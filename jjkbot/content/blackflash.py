@@ -11,9 +11,19 @@ relèvent (« Béni de l’étincelle » = 20 %, « Adepte du Black Flash » = 1
 « Fièvre » ajoute +5 %. Un échec ramène donc à *cette* base, pas à 5 % : sans
 cela, un simple raté effacerait le bonus du trait.
 
-Les buffs affichés dans l’embed (+30 % de force sur le coup, +400 EO,
-+1000 de sortie d’EO) sont **narratifs** : ils décrivent le coup porté pendant
-le RP, sans modifier les statistiques de la fiche.
+Le coup réussi donne un **buff de statistiques** : **+30 % de Force** sur le
+coup porté (effet instantané, décrit dans l’embed), puis **+10 % à toutes les
+statistiques attribuables** (Réserve d’EO exceptée) pendant **3 tours**. Ce buff
+vit dans la fiche et s’affiche dans `/profil voir` tant qu’il reste des tours.
+Un Black Flash rend en outre **75 EO**, annoncé dans l’embed du coup (gain
+narratif : la fiche n’est pas modifiée).
+
+S’y ajoute le **Record Man du Rayon Noir** : quatre succès consécutifs donnent
+un titre **personnel** — chaque joueur le décroche pour lui-même, définitivement,
+sans le prendre à personne — et une augmentation permanente de chance
+(`RECORD_BONUS`, `MORTAL_RECORD_BONUS` en Combat Mortel). La série en cours et le
+record personnel vivent tous deux dans la fiche (`blackflashStreak`,
+`blackflashRecord`).
 """
 
 from __future__ import annotations
@@ -26,6 +36,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from jjkbot import config
+from jjkbot.content.stats import SPENDABLE_STATS
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +46,46 @@ BASE_CHANCE = 5
 CHANCE_STEP = 5
 # Plafond d’empilement, en pourcentage.
 MAX_CHANCE = 100
+
+# --- Record Man du Rayon Noir --------------------------------------------
+#
+# Quatre Rayons Noirs **consécutifs** (dans un même combat, donc sans échec et
+# sans `/jjk blackflash-reset`) décrochent le titre de « recordman du Rayon
+# Noir ». Le titre est **personnel** : chaque joueur le décroche pour lui-même et
+# le garde — il n’y a pas un détenteur unique, et personne ne peut le lui
+# reprendre. Il donne une augmentation **permanente** de chance, qui passe du
+# double lors d’un **Combat Mortel**.
+#
+# Le bonus est traité comme un plancher (voir `effective_base`) : il survit donc
+# à un échec comme à une fin de combat.
+RECORD_STREAK = 4
+RECORD_BONUS = 10
+MORTAL_RECORD_BONUS = 20
+
+# --- Buff de statistiques -------------------------------------------------
+#
+# Un Black Flash réussi ne fait pas que relever la chance de le refaire : il
+# embrase le personnage. Le coup porté gagne **+30 % de Force** — effet
+# instantané, purement narratif, qui ne vit que dans l’embed du coup — puis
+# **toutes les statistiques attribuables** (Force, Résistance, Vitesse,
+# Manipulation occulte, Sortie d’EO) gagnent **+10 %** pendant **3 tours**. La
+# Réserve d’EO, figée à la création (`StatDefinition.fixed`), en est exclue.
+#
+# Le buff vit dans la fiche (`blackflashBuffTurns`) et s’applique à l’affichage
+# des statistiques : `/profil voir` montre donc les valeurs buffées tant qu’il
+# reste des tours. Le staff peut le fixer ou le retirer avec `/blackflash buff`
+# (voir `cogs.blackflash`), puisque le bot ne suit pas les tours de combat.
+STRIKE_FORCE_PERCENT = 30
+BUFF_STAT_PERCENT = 10
+BUFF_TURNS = 3
+# Borne du compteur, pour une correction manuelle du staff.
+MAX_BUFF_TURNS = 99
+
+# Energie rendue au personnage par un Black Flash réussi. C’est un gain
+# **narratif**, écrit dans l’embed du coup pour le joueur : il ne touche pas la
+# fiche (ni la Réserve d’EO, qui reste une statistique figée) et n’apparaît donc
+# pas dans `/profil voir`.
+EO_RESTORE = 75
 
 # Textes narratifs des deux issues (adaptés des écrans de référence).
 SUCCESS_TEXT = (
@@ -49,8 +100,38 @@ FAIL_TEXT = (
 )
 
 # Buffs rappelés dans le bloc de code de l’embed de succès.
-BUFFS_TEXT = "+30% de force sur le coup, +400 EO, +1000 de sortie d’EO"
+BUFFS_TEXT = (
+    f"+{STRIKE_FORCE_PERCENT}% de Force sur le coup, puis "
+    f"+{BUFF_STAT_PERCENT}% à toutes les stats (Réserve d’EO exceptée) "
+    f"pendant {BUFF_TURNS} tours"
+)
 NO_BUFF_TEXT = "Rien."
+
+
+def buffed_value(value, turns: int, percent: int = BUFF_STAT_PERCENT) -> int:
+    """Valeur d’une statistique sous l’effet du buff du Rayon Noir.
+
+    Le pourcentage est arrondi **au supérieur** (10 % de 5 vaut 1, pas 0) : un
+    petit bonus ne doit jamais disparaître par troncature.
+    """
+    if turns <= 0 or percent <= 0:
+        return int(value or 0)
+    base = int(value or 0)
+    bonus = (base * percent + 99) // 100
+    return base + bonus
+
+
+def apply_stat_buff(stats, turns: int) -> dict[str, int]:
+    """Statistiques affichées : buff appliqué aux seules statistiques attribuables.
+
+    La Réserve d’EO n’est pas dans `SPENDABLE_STATS` : elle reste donc intacte.
+    """
+    result = dict(stats or {})
+    if turns <= 0:
+        return result
+    for stat in SPENDABLE_STATS:
+        result[stat.id] = buffed_value(result.get(stat.id, 0), turns)
+    return result
 
 
 # --- Traits et évènements -------------------------------------------------
@@ -215,15 +296,28 @@ def trait_modifiers(traits) -> tuple[int, int]:
     return base, bonus
 
 
-def effective_base(traits, base_override=None, bonus_override=0) -> int:
+def record_bonus(mortal: bool = False) -> int:
+    """Chance permanente du recordman : `RECORD_BONUS`, doublée en Combat Mortel.
+
+    Réservé aux joueurs qui ont décroché le titre (record personnel au moins
+    égal à `RECORD_STREAK`) : les autres ne reçoivent rien.
+    """
+    return MORTAL_RECORD_BONUS if mortal else RECORD_BONUS
+
+
+def effective_base(traits, base_override=None, bonus_override=0, record_bonus=0) -> int:
     """Base de chance d’une fiche : traits compris, exception du staff incluse.
 
     C’est la chance à laquelle un échec (ou `/jjk blackflash-reset`) ramène le
     joueur. Le plafond `MAX_CHANCE` s’applique ici aussi.
+
+    `record_bonus` est l’augmentation permanente du **recordman du Rayon Noir**
+    (+10, +20 en Combat Mortel) : la passer ici en fait un plancher, si bien
+    qu’un raté ne la retire pas — c’est ce que veut dire « définitivement ».
     """
     trait_base, trait_bonus = trait_modifiers(traits)
     base = max(BASE_CHANCE, trait_base, _clamp(base_override))
-    bonus = trait_bonus + _clamp(bonus_override)
+    bonus = trait_bonus + _clamp(bonus_override) + _clamp(record_bonus)
     return min(MAX_CHANCE, base + bonus)
 
 

@@ -46,7 +46,7 @@ SUCCESS_TEXT = (
     "Ton personnage devait disparaître… et pourtant son âme refuse de céder. "
     "Une haine trop profonde, un ressentiment impossible à apaiser ou un "
     "attachement trop puissant le retiennent à ce monde : la mort n’aura pas "
-    "le dernier mot. Il renaît sous la forme d’un **Esprit Vengeur**, à jamais "
+    "le dernier mot. Il renaît sous la forme d’un Esprit Vengeur, à jamais "
     "marqué par les émotions qui l’habitaient à l’instant de sa mort."
 )
 FAIL_TEXT = (

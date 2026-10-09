@@ -72,6 +72,35 @@ class BlackflashRulesTests(unittest.TestCase):
         self.assertEqual(rules.normalize("8"), 8)
         self.assertEqual(rules.normalize(None), rules.BASE_CHANCE)
 
+    def test_seuil_et_bonus_du_record(self):
+        self.assertEqual(rules.RECORD_STREAK, 4)
+        self.assertEqual(rules.record_bonus(), rules.RECORD_BONUS)
+        self.assertEqual(rules.record_bonus(True), rules.MORTAL_RECORD_BONUS)
+        self.assertGreater(rules.MORTAL_RECORD_BONUS, rules.RECORD_BONUS)
+
+    def test_base_effective_integre_le_bonus_du_recordman(self):
+        # Le bonus du record est un plancher : il relève la base, donc la valeur
+        # à laquelle un échec ramène le joueur.
+        self.assertEqual(rules.effective_base([], record_bonus=rules.RECORD_BONUS), 15)
+        self.assertEqual(rules.effective_base(["Fièvre"], record_bonus=rules.RECORD_BONUS), 20)
+        self.assertEqual(
+            rules.effective_base([], record_bonus=rules.MORTAL_RECORD_BONUS),
+            5 + rules.MORTAL_RECORD_BONUS,
+        )
+        self.assertEqual(rules.effective_base([], record_bonus=0), rules.BASE_CHANCE)
+
+    def test_base_effective_avec_record_plafonnee_a_cent(self):
+        self.assertEqual(
+            rules.effective_base([], base_override=95, record_bonus=rules.RECORD_BONUS),
+            rules.MAX_CHANCE,
+        )
+
+    def test_succes_et_echec_du_recordman_partent_de_la_base_bonifiee(self):
+        base = rules.effective_base([], record_bonus=rules.RECORD_BONUS)
+        self.assertEqual(rules.next_chance(base, True, base), base + rules.CHANCE_STEP)
+        # Un raté retombe sur base + 10, pas sur 5 : le buff est « définitif ».
+        self.assertEqual(rules.next_chance(80, False, base), 15)
+
 
 class BlackflashCatalogTests(unittest.TestCase):
     def test_cles_presentes_dans_le_catalogue_et_laffichage(self):
@@ -133,6 +162,43 @@ class BlackflashProfileTests(unittest.TestCase):
         self.assertEqual(restored.blackflash_base, 15)
         self.assertEqual(restored.blackflash_bonus, 5)
 
+    def test_serie_de_black_flash_par_defaut_a_zero(self):
+        # Les fiches créées avant le record démarrent sans série en cours.
+        profile = Profile.from_dict({"name": "Zuruï"})
+
+        self.assertEqual(profile.blackflash_streak, 0)
+        self.assertEqual(profile.to_dict()["blackflashStreak"], 0)
+
+    def test_aller_retour_conserve_la_serie(self):
+        profile = Profile.from_dict({"blackflashStreak": 3})
+
+        restored = Profile.from_dict(profile.to_dict())
+
+        self.assertEqual(restored.blackflash_streak, 3)
+
+    def test_record_personnel_par_defaut_a_zero(self):
+        # Le titre est personnel : il vit sur la fiche du joueur, et se déduit du
+        # record personnel (`blackflashRecord`), pas d’un détenteur unique.
+        profile = Profile.from_dict({"name": "Zuruï"})
+
+        self.assertEqual(profile.blackflash_record, 0)
+        self.assertEqual(profile.to_dict()["blackflashRecord"], 0)
+
+    def test_aller_retour_conserve_le_record_personnel(self):
+        profile = Profile.from_dict({"blackflashRecord": 5})
+
+        restored = Profile.from_dict(profile.to_dict())
+
+        self.assertEqual(restored.blackflash_record, 5)
+
+    def test_le_record_personnel_est_independant_de_la_serie(self):
+        profile = Profile.from_dict({"blackflashStreak": 2, "blackflashRecord": 6})
+
+        restored = Profile.from_dict(profile.to_dict())
+
+        self.assertEqual(restored.blackflash_streak, 2)
+        self.assertEqual(restored.blackflash_record, 6)
+
 
 class BlackflashEmbedTests(unittest.TestCase):
     """Embed de résultat, avec des images locales factices."""
@@ -167,10 +233,15 @@ class BlackflashEmbedTests(unittest.TestCase):
         self.assertNotIn("<:", embed.title)
         self.assertIn("Rayon noir", embed.description)
         self.assertIn(f"[ {rules.BUFFS_TEXT} ]", embed.description)
-        self.assertIn("**Réussit**", embed.description)
+        # Embed d’évènement : le texte est écrit en gras.
+        self.assertIn(f"**{rules.SUCCESS_TEXT}**", embed.description)
+        self.assertIn("**🌙 Tentative de black flash : Réussit**", embed.description)
         self.assertIn("`15%` → `20%`", embed.description)
-        self.assertIn("**+400**", embed.description)
-        self.assertIn("**+1000**", embed.description)
+        self.assertIn(f"**⚔️ Coup porté : +{rules.STRIKE_FORCE_PERCENT}% de Force**", embed.description)
+        self.assertIn(f"**🔮 Énergie occulte : +{rules.EO_RESTORE} EO**", embed.description)
+        self.assertIn(
+            f"**📊 Buff : +{rules.BUFF_STAT_PERCENT}% à toutes les stats", embed.description
+        )
         self.assertEqual(embed.colour.value, theme.color(theme.SECTION_BLACKFLASH))
         self.assertEqual(embed.footer.text, blackflash_views.FOOTER)
         # L’image de succès est jointe au message (aucune URL qui expirerait).
@@ -185,7 +256,8 @@ class BlackflashEmbedTests(unittest.TestCase):
 
         self.assertIn("Raté", embed.title)
         self.assertIn(f"[ {rules.NO_BUFF_TEXT} ]", embed.description)
-        self.assertIn("**Échoué**", embed.description)
+        self.assertIn(f"**{rules.FAIL_TEXT}**", embed.description)
+        self.assertIn("**🌙 Tentative de black flash : Échoué**", embed.description)
         self.assertIn("`15%` → `5%`", embed.description)
         self.assertNotIn(rules.BUFFS_TEXT, embed.description)
         self.assertEqual(embed.colour.value, theme.color(theme.SECTION_NEUTRE))
@@ -354,6 +426,17 @@ class BlackflashSendTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(save.await_args.args[2].blackflash_chance, rules.BASE_CHANCE)
         embed = interaction.response.send_message.await_args.kwargs["embed"]
         self.assertIn("`45%` → `5%`", embed.description)
+
+    async def test_reset_dissipe_le_buff_de_stats(self):
+        # Fin de combat : le buff de Noirceur ne survit pas au combat qui l’a vu naître.
+        profile = Profile.from_dict({"blackflashChance": 45, "blackflashBuffTurns": 2})
+        interaction = FakeInteraction()
+        save = self._storage(profile)
+        await blackflash_views.send_blackflash_reset(interaction)
+
+        self.assertEqual(save.await_args.args[2].blackflash_buff_turns, 0)
+        embed = interaction.response.send_message.await_args.kwargs["embed"]
+        self.assertIn("buff de Noirceur est dissipé", embed.description)
 
     async def test_reset_sans_fiche_une_erreur_est_affichee(self):
         interaction = FakeInteraction()
@@ -561,6 +644,339 @@ class BlackflashTraitSendTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(save.await_args.args[2].blackflash_chance, 20)
         embed = interaction.response.send_message.await_args.kwargs["embed"]
         self.assertIn("`45%` → `20%`", embed.description)
+
+
+class BlackflashRecordEmbedTests(unittest.TestCase):
+    """Second embed : le titre personnel, le record, le buff et l’image."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        root = Path(self.directory.name)
+        self.image = root / "record_rayon_noir.png"
+        self.image.write_bytes(b"\x89PNG")
+        self.patches = [
+            unittest.mock.patch.object(config, "BLACKFLASH_RECORD_PATH", self.image),
+            unittest.mock.patch.object(config, "BLACKFLASH_RECORD_URL", None),
+        ]
+        for patch in self.patches:
+            patch.start()
+
+    def tearDown(self):
+        for patch in reversed(self.patches):
+            patch.stop()
+        self.directory.cleanup()
+
+    def test_annonce_le_titre_le_record_et_le_buff(self):
+        files: list = []
+        embed = blackflash_views.build_blackflash_record_embed(42, "John zenin", 4, None, files)
+
+        self.assertIn("Record Man du Rayon Noir", embed.description)
+        self.assertIn("4 Black Flash consécutifs", embed.description)
+        self.assertIn(f"+{rules.RECORD_BONUS} % de chance", embed.description)
+        self.assertIn(f"+{rules.MORTAL_RECORD_BONUS} %", embed.description)
+        self.assertIn("Combat Mortel", embed.description)
+        self.assertIn("<@42>", embed.description)
+        self.assertIn("John zenin", embed.description)
+        # Le titre est définitif et personnel : l’embed le dit, sans nommer d’autre joueur.
+        self.assertIn("acquis définitivement", embed.description)
+        self.assertNotIn("Ancien record man", embed.description)
+        self.assertNotIn("unique", embed.description)
+        self.assertEqual(embed.colour.value, theme.color(theme.SECTION_BLACKFLASH))
+        self.assertEqual(embed.footer.text, blackflash_views.RECORD_FOOTER)
+        self.assertEqual(embed.image.url, "attachment://record_rayon_noir.png")
+        self.assertEqual([file.filename for file in files], ["record_rayon_noir.png"])
+        for file in files:
+            file.close()
+
+    def test_ne_nomme_jamais_un_autre_joueur(self):
+        # Plus de détenteur unique : aucun « ancien record man » n’a de sens.
+        embed = blackflash_views.build_blackflash_record_embed(99, "Mbappé", 5)
+
+        self.assertIn("5 Black Flash consécutifs", embed.description)
+        self.assertNotIn("Ancien", embed.description)
+        self.assertNotIn("<@42>", embed.description)
+
+    def test_image_locale_absente_retombe_sur_lurl_de_repli(self):
+        missing = Path(tempfile.gettempdir()) / "record_absent.png"
+        with unittest.mock.patch.object(config, "BLACKFLASH_RECORD_PATH", missing):
+            with unittest.mock.patch.object(
+                config, "BLACKFLASH_RECORD_URL", "https://exemple.test/record.png"
+            ):
+                files: list = []
+                embed = blackflash_views.build_blackflash_record_embed(
+                    42, "John zenin", 4, None, files
+                )
+
+        self.assertEqual(embed.image.url, "https://exemple.test/record.png")
+        self.assertEqual(files, [])
+
+    def test_sans_liste_de_fichiers_aucune_image_brisee(self):
+        embed = blackflash_views.build_blackflash_record_embed(42, "John zenin", 4)
+
+        self.assertFalse(embed.image)
+
+
+class BlackflashRecordSendTests(unittest.IsolatedAsyncioTestCase):
+    """Déroulé complet : série, titre personnel définitif et Combat Mortel."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        root = Path(self.directory.name)
+        ok_path = root / "blackflash_ok.png"
+        ko_path = root / "blackflash_ko.png"
+        record_path = root / "record_rayon_noir.png"
+        for path in (ok_path, ko_path, record_path):
+            path.write_bytes(b"\x89PNG")
+        self.patches = [
+            unittest.mock.patch.object(config, "BLACKFLASH_OK_PATH", ok_path),
+            unittest.mock.patch.object(config, "BLACKFLASH_KO_PATH", ko_path),
+            unittest.mock.patch.object(config, "BLACKFLASH_RECORD_PATH", record_path),
+            unittest.mock.patch.object(config, "BLACKFLASH_RECORD_URL", None),
+            unittest.mock.patch.object(config, "BANNER_URL", None),
+            unittest.mock.patch.object(config, "BANNER_PATH", root / "banniere_absente.png"),
+        ]
+        for patch in self.patches:
+            patch.start()
+
+    def tearDown(self):
+        for patch in reversed(self.patches):
+            patch.stop()
+        self.directory.cleanup()
+
+    def _storage(self, profile: Profile):
+        save = unittest.mock.AsyncMock(return_value=profile)
+        stack = ExitStack()
+        self.addCleanup(stack.close)
+        stack.enter_context(
+            unittest.mock.patch.object(
+                blackflash_views, "get_profile", unittest.mock.AsyncMock(return_value=profile)
+            )
+        )
+        stack.enter_context(unittest.mock.patch.object(blackflash_views, "save_profile", save))
+        return save
+
+    @staticmethod
+    def _embeds(interaction):
+        return interaction.followup.send.await_args.kwargs["embeds"]
+
+    @staticmethod
+    def _close(interaction):
+        """Ferme les pièces jointes : sinon Windows verrouille le dossier temporaire."""
+        for file in interaction.followup.send.await_args.kwargs.get("files") or []:
+            file.close()
+
+    async def test_quatrieme_succes_consecutif_decroche_le_titre(self):
+        profile = Profile.from_dict(
+            {"name": "John zenin", "blackflashChance": 100, "blackflashStreak": 3}
+        )
+        interaction = FakeInteraction(user_id=7)
+        save = self._storage(profile)
+
+        await blackflash_views.send_blackflash(interaction)
+
+        saved = save.await_args.args[2]
+        self.assertEqual(saved.blackflash_streak, 4)
+        self.assertEqual(saved.blackflash_record, 4)
+        embeds = self._embeds(interaction)
+        self.assertEqual(len(embeds), 2)
+        self.assertIn("Record Man du Rayon Noir", embeds[1].description)
+        self.assertEqual(
+            [file.filename for file in interaction.followup.send.await_args.kwargs["files"]],
+            ["blackflash_ok.png", "record_rayon_noir.png"],
+        )
+        self._close(interaction)
+
+    async def test_troisieme_succes_ne_donne_pas_le_titre(self):
+        profile = Profile.from_dict(
+            {"name": "John zenin", "blackflashChance": 100, "blackflashStreak": 2}
+        )
+        interaction = FakeInteraction(user_id=7)
+        save = self._storage(profile)
+
+        await blackflash_views.send_blackflash(interaction)
+
+        self.assertEqual(save.await_args.args[2].blackflash_record, 0)
+        self.assertEqual(len(self._embeds(interaction)), 1)
+        self._close(interaction)
+
+    async def test_deux_joueurs_peuvent_etre_recordmen(self):
+        # Le titre n’est plus unique : chacun le décroche pour soi, définitivement.
+        for user_id, name in ((7, "John zenin"), (99, "Mbappé")):
+            with self.subTest(joueur=name):
+                profile = Profile.from_dict(
+                    {"name": name, "blackflashChance": 100, "blackflashStreak": 3}
+                )
+                interaction = FakeInteraction(user_id=user_id)
+                self._storage(profile)
+
+                await blackflash_views.send_blackflash(interaction)
+
+                self.assertEqual(profile.blackflash_record, 4)
+                self.assertEqual(len(self._embeds(interaction)), 2)
+                self._close(interaction)
+
+    async def test_un_recordman_conserve_son_titre_sans_nouvel_embed(self):
+        # Titre déjà acquis : atteindre à nouveau 4 ne renvoie pas le second embed.
+        profile = Profile.from_dict(
+            {"blackflashChance": 100, "blackflashStreak": 3, "blackflashRecord": 4}
+        )
+        interaction = FakeInteraction(user_id=7)
+        save = self._storage(profile)
+
+        await blackflash_views.send_blackflash(interaction)
+
+        self.assertEqual(save.await_args.args[2].blackflash_record, 4)
+        self.assertEqual(len(self._embeds(interaction)), 1)
+        self._close(interaction)
+
+    async def test_le_recordman_ameliore_son_record_sans_nouvel_embed(self):
+        profile = Profile.from_dict(
+            {"blackflashChance": 100, "blackflashStreak": 4, "blackflashRecord": 4}
+        )
+        interaction = FakeInteraction(user_id=7)
+        save = self._storage(profile)
+
+        await blackflash_views.send_blackflash(interaction)
+
+        self.assertEqual(save.await_args.args[2].blackflash_record, 5)
+        self.assertEqual(len(self._embeds(interaction)), 1)
+        self._close(interaction)
+
+    async def test_le_recordman_garde_son_buff_apres_un_echec(self):
+        profile = Profile.from_dict(
+            {"blackflashChance": 45, "blackflashStreak": 3, "blackflashRecord": 4}
+        )
+        interaction = FakeInteraction(user_id=7)
+        save = self._storage(profile)
+
+        with unittest.mock.patch.object(blackflash_views.rules, "roll", return_value=False):
+            await blackflash_views.send_blackflash(interaction)
+
+        saved = save.await_args.args[2]
+        # Échec : la série repart de zéro, mais le titre (et son plancher) restent.
+        self.assertEqual(saved.blackflash_streak, 0)
+        self.assertEqual(saved.blackflash_record, 4)
+        self.assertEqual(saved.blackflash_chance, rules.BASE_CHANCE + rules.RECORD_BONUS)
+        self._close(interaction)
+
+    async def test_un_succes_relance_le_buff_de_stats(self):
+        profile = Profile.from_dict({"blackflashChance": 100})
+        interaction = FakeInteraction(user_id=7)
+        save = self._storage(profile)
+
+        await blackflash_views.send_blackflash(interaction)
+
+        self.assertEqual(save.await_args.args[2].blackflash_buff_turns, rules.BUFF_TURNS)
+        self._close(interaction)
+
+    async def test_un_echec_ne_touche_pas_au_buff_de_stats(self):
+        profile = Profile.from_dict({"blackflashChance": 45, "blackflashBuffTurns": 2})
+        interaction = FakeInteraction(user_id=7)
+        save = self._storage(profile)
+
+        with unittest.mock.patch.object(blackflash_views.rules, "roll", return_value=False):
+            await blackflash_views.send_blackflash(interaction)
+
+        self.assertEqual(save.await_args.args[2].blackflash_buff_turns, 2)
+        self._close(interaction)
+
+    async def test_echec_du_non_recordman_retombe_a_la_base_normale(self):
+        profile = Profile.from_dict({"blackflashChance": 45, "blackflashStreak": 3})
+        interaction = FakeInteraction(user_id=99)
+        save = self._storage(profile)
+
+        with unittest.mock.patch.object(blackflash_views.rules, "roll", return_value=False):
+            await blackflash_views.send_blackflash(interaction)
+
+        self.assertEqual(save.await_args.args[2].blackflash_chance, rules.BASE_CHANCE)
+        self.assertEqual(save.await_args.args[2].blackflash_streak, 0)
+        self._close(interaction)
+
+    async def test_combat_mortel_refuse_a_qui_na_pas_le_titre(self):
+        profile = Profile.from_dict({"blackflashChance": 100})
+        interaction = FakeInteraction(user_id=99)
+        save = self._storage(profile)
+
+        await blackflash_views.send_blackflash(interaction, mortal=True)
+
+        # Aucun tirage n’est consommé : rien n’est sauvegardé ni envoyé.
+        save.assert_not_awaited()
+        interaction.followup.send.assert_not_awaited()
+        kwargs = interaction.response.send_message.await_args.kwargs
+        self.assertTrue(kwargs["ephemeral"])
+        self.assertIn("recordman", kwargs["embed"].description)
+
+    async def test_combat_mortel_double_le_buff_du_recordman(self):
+        # Le titre est définitif : même sans série en cours, le +20 s’applique.
+        profile = Profile.from_dict({"blackflashChance": 0, "blackflashRecord": 4})
+        interaction = FakeInteraction(user_id=42)
+        save = self._storage(profile)
+
+        with unittest.mock.patch.object(blackflash_views.rules, "roll", return_value=True):
+            await blackflash_views.send_blackflash(interaction, mortal=True)
+
+        base = rules.BASE_CHANCE + rules.MORTAL_RECORD_BONUS
+        self.assertEqual(save.await_args.args[2].blackflash_chance, base + rules.CHANCE_STEP)
+        embeds = self._embeds(interaction)
+        self.assertTrue(
+            any(f"`{base}%` → `{base + 5}%`" in (embed.description or "") for embed in embeds)
+        )
+        self.assertEqual(len(embeds), 1)
+        self._close(interaction)
+
+    async def test_hors_combat_mortel_le_recordman_garde_dix(self):
+        profile = Profile.from_dict({"blackflashChance": 0, "blackflashRecord": 4})
+        interaction = FakeInteraction(user_id=42)
+        save = self._storage(profile)
+
+        with unittest.mock.patch.object(blackflash_views.rules, "roll", return_value=True):
+            await blackflash_views.send_blackflash(interaction)
+
+        base = rules.BASE_CHANCE + rules.RECORD_BONUS
+        self.assertEqual(save.await_args.args[2].blackflash_chance, base + rules.CHANCE_STEP)
+        self._close(interaction)
+
+    async def test_reset_clot_la_serie_sans_retirer_le_titre(self):
+        profile = Profile.from_dict(
+            {
+                "name": "John zenin",
+                "blackflashChance": 45,
+                "blackflashStreak": 2,
+                "blackflashRecord": 4,
+            }
+        )
+        interaction = FakeInteraction(user_id=42)
+        save = self._storage(profile)
+
+        await blackflash_views.send_blackflash_reset(interaction)
+
+        saved = save.await_args.args[2]
+        self.assertEqual(saved.blackflash_streak, 0)
+        self.assertEqual(saved.blackflash_record, 4)
+        # Le recordman retrouve sa base bonifiée, série close ou non.
+        self.assertEqual(saved.blackflash_chance, rules.BASE_CHANCE + rules.RECORD_BONUS)
+        embed = interaction.response.send_message.await_args.kwargs["embed"]
+        self.assertIn("série du combat est close", embed.description)
+
+    async def test_le_second_embed_est_renvoye_sans_image_si_lupload_echoue(self):
+        profile = Profile.from_dict(
+            {"name": "John zenin", "blackflashChance": 100, "blackflashStreak": 3}
+        )
+        interaction = FakeInteraction(user_id=7)
+        self._storage(profile)
+        too_large = discord.HTTPException(
+            SimpleNamespace(status=40005, reason="Request Entity Too Large"),
+            {"code": 40005, "message": "Request entity too large"},
+        )
+        interaction.followup.send = unittest.mock.AsyncMock(side_effect=[too_large, None])
+
+        with self.assertLogs("jjkbot.views.blackflash", level="WARNING"):
+            await blackflash_views.send_blackflash(interaction)
+
+        self.assertEqual(interaction.followup.send.await_count, 2)
+        retry = interaction.followup.send.await_args_list[1].kwargs["embeds"]
+        self.assertEqual(len(retry), 2)  # résultat + record, tous deux sans image
+        self.assertEqual([embed.image.url for embed in retry if embed.image], [])
 
 
 if __name__ == "__main__":  # pragma: no cover

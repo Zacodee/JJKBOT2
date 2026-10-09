@@ -1,6 +1,9 @@
-# Configuration et données locales
+# Configuration et données locales. Le dépôt est PUBLIC : rien de ce dossier
+# (fiches des joueurs, salon d’XP, demandes en attente) ne doit jamais partir
+# avec le code. Il se conserve en local ou sur un stockage persistant désigné
+# par DATA_DIR.
 .env
-data/profiles.json
+data/*.json
 data/images/
 
 # Journal du bot

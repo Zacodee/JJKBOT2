@@ -47,9 +47,15 @@ DEFAULT_CATALOG: dict[str, EmojiSpec] = {
     "manipulation_eo": EmojiSpec("jjk_eo_manipulation", "🪄"),
     "reserve_eo": EmojiSpec("jjk_eo_reserve", "🔮"),
     "sortie_eo": EmojiSpec("jjk_eo_sortie", "🌀"),
+    # Sous-statistiques (voir `content.stats`) : elles découlent d’une
+    # statistique principale et ne s’achètent pas.
+    "perception": EmojiSpec("jjk_perception", "👁️"),
+    "projectile": EmojiSpec("jjk_projectile", "🎯"),
+    "perception_occulte": EmojiSpec("jjk_perception_occulte", "🔍"),
     "points": EmojiSpec("jjk_points", "💠"),
     "competences": EmojiSpec("jjk_competences", "🌳"),
     "xp": EmojiSpec("jjk_xp", "⭐"),
+    "train": EmojiSpec("jjk_train", "💪"),
     "debloque": EmojiSpec("jjk_debloque", "✅"),
     "disponible": EmojiSpec("jjk_disponible", "🔓"),
     "verrouille": EmojiSpec("jjk_verrouille", "🔒"),

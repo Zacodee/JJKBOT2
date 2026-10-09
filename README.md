@@ -64,6 +64,7 @@ python main.py            # démarre le bot
 | `BLACKFLASH_KO_URL` | Repli de l’image d’échec si `assets/blackflash_ko.png` est absent |
 | `RENAISSANCE_OK_URL` | Repli de l’image de succès de la Renaissance si `assets/renaissance_ok.png` est absent |
 | `RENAISSANCE_KO_URL` | Repli de l’image d’échec de la Renaissance si `assets/renaissance_ko.png` est absent |
+| `TRAIN_URL` | Repli de l’image de `/train` si `assets/train.png` est absent |
 | `STAFF_ROLE_ID` | Facultatif : rôle autorisé à utiliser les commandes du staff |
 | `DATA_DIR` | Dossier des fiches et images (défaut `data/`) : à placer **hors du dépôt cloné** sur un hébergeur |
 
@@ -83,7 +84,9 @@ Les deux images du Black Flash (`assets/blackflash_ok.png` et `assets/blackflash
 envoyées par `/jjk blackflash`) suivent la même règle : elles sont jointes en local via
 `attachment://`, `BLACKFLASH_OK_URL` et `BLACKFLASH_KO_URL` ne servant que de repli. Les
 deux images de la Renaissance (`assets/renaissance_ok.png` / `assets/renaissance_ko.png`)
-fonctionnent à l’identique, avec `RENAISSANCE_OK_URL` / `RENAISSANCE_KO_URL` en repli.
+fonctionnent à l’identique, avec `RENAISSANCE_OK_URL` / `RENAISSANCE_KO_URL` en repli, et
+l’image de l’entraînement (`assets/train.png`, envoyée par `/train`) suit encore la même
+règle, avec `TRAIN_URL` en repli.
 
 Ces médias partent **en pièce jointe à chaque réponse** : leur poids joue donc
 directement sur la vitesse. Si les réponses tardent, allège-les avec
@@ -120,6 +123,8 @@ statistiques, panier, boutons…) possède une clé reliée à un **emoji custom
   n’affichant pas toujours les emojis custom.
 - L’embed de la Renaissance suit le même schéma : `renaissance` (titre réussi),
   `renaissance_rate` (titre raté), `renaissance_tentative` et `renaissance_chance`.
+- Les **sous-statistiques** ont leurs clés : `perception`, `projectile` et
+  `perception_occulte` ; l’entraînement utilise `train`.
 
 > ⚠️ **Si le bot affiche les emojis de secours malgré la création des emojis**, vérifie
 > que l’intent `emojis` est bien activé dans `main.py`. discord.py ne remplit
@@ -158,6 +163,18 @@ les points de statistique, tandis que **Réserve d’EO** est **figée à la cr�
 dans les barres, et la page Statistiques l’affiche dans un bloc séparé, sous un
 filet et avec un cadenas. Elle se pose à la **validation de la fiche RP**, par un
 administrateur, avec `/jjk eo` (voir plus bas).
+
+Trois **sous-statistiques** s’ajoutent sous les statistiques : **Perception**,
+**Vitesse de Projectile** et **Perception Occulte**. Elles ne s’achètent **jamais**
+avec des points : chacune suit une statistique principale et vaut exactement sa
+valeur — Perception et Vitesse de Projectile valent la **Vitesse**, Perception
+Occulte vaut la **Manipulation occulte**. Monter la statistique principale les fait
+grandir ; la page Statistiques les affiche (nom et valeur) sous les barres, **sans
+description** : leurs effets se découvrent en RP, guidés par le staff.
+
+Quand le joueur profite du **buff de Noirceur** d’un Black Flash, la page Statistiques
+affiche les valeurs **buffées** (`Force : 11 (+1)`) avec un rappel des tours restants :
+le total réparti, lui, reste celui des points réellement dépensés.
 
 ### Compétences
 
@@ -244,15 +261,22 @@ qu’aux membres ayant la permission « Administrateur », et le bot revérifie 
 
 | Commande | Effet |
 |---|---|
-| `/jjk blackflash` | Tente le coup rarissime : base **effective** du joueur, **+5 %** par succès (plafond 100 %), retour à cette base si tu rates |
-| `/jjk blackflash-reset` | Remet tes chances à ta base effective quand le combat est fini |
+| `/jjk blackflash [mortel]` | Tente le coup rarissime : base **effective** du joueur, **+5 %** par succès (plafond 100 %), retour à cette base si tu rates. `mortel` : **Combat Mortel**, réservé au recordman |
+| `/jjk blackflash-reset` | Remet tes chances à ta base effective quand le combat est fini (et clôt la série du combat) |
 | `/jjk blackflash-chance joueur: [base] [bonus] [retirer]` | Fixe le plancher et/ou le bonus de Black Flash d’un joueur *(staff)* |
 
 - La chance est stockée **dans ta fiche** (`blackflashChance`) : une fiche est donc
   obligatoire, et `/jjk blackflash-reset` remet la base effective.
-- Les buffs de l’embed (`+30 % de force sur le coup`, `+400 EO`, `+1000 de sortie
-  d’EO`) sont **narratifs** : ils décrivent le coup pendant le RP, sans modifier les
-  statistiques.
+- Un succès **rend 75 EO** (gain narratif, annoncé dans l’embed du coup : la fiche
+  n’est pas modifiée) et donne un **buff de statistiques** : **+30 % de Force** sur
+  le coup porté (effet instantané, écrit dans l’embed du coup), puis **+10 % à toutes les
+  statistiques attribuables** (Force, Résistance, Vitesse, Manipulation occulte,
+  Sortie d’EO — la **Réserve d’EO** en est exclue) pendant **3 tours**. Le buff vit
+  sur la fiche (`blackflashBuffTurns`) et s’affiche dans `/profil voir` tant qu’il
+  reste des tours ; un raté ne le retire pas.
+- Le bot ne suit pas les tours de combat : c’est le staff qui fait avancer ou
+  retire le buff avec `/blackflash buff`. `/jjk blackflash-reset` (fin de combat)
+  le dissipe également.
 - Le résultat est encadré par la bannière, avec l’image locale
   (`assets/blackflash_ok.png` en cas de succès, `assets/blackflash_ko.png` sinon).
 
@@ -297,6 +321,66 @@ relèvent. La correspondance vit dans [config/blackflash.json](config/blackflash
   une fiche : elle fixe un plancher (`blackflashBase`) et un bonus additif
   (`blackflashBonus`) qui s’ajoutent aux traits, sans que le joueur modifie sa fiche.
 
+#### Record Man du Rayon Noir
+
+- **4 Black Flash consécutifs** dans un même combat décrochent le titre de **recordman du
+  Rayon Noir**, et le second embed de la tentative l’annonce avec l’image locale
+  `assets/record_rayon_noir.png`.
+- Le titre donne une augmentation **permanente** de **+10 %** de chance de réussir un
+  Rayon Noir ; elle est traitée comme un **plancher** (`base effective + 10`), donc elle
+  survit à un raté, et s’ajoute aux traits et à l’exception du staff.
+- Le recordman peut passer `mortel:Vrai` à `/jjk blackflash` pour un **Combat Mortel** :
+  son augmentation passe alors à **+20 %**. L’option est **refusée** à tout joueur qui
+  n’a pas décroché le titre.
+- Le titre est **personnel** : chacun le décroche pour soi, autant de fois que de joueurs
+  qui réussissent la série. Personne ne peut le reprendre à quelqu’un d’autre, et deux
+  joueurs peuvent donc être recordmen en même temps.
+- Il est **définitif** : ni un raté, ni une fin de combat, ni l’exploit d’un autre ne le
+  retirent. Deux champs de la fiche suffisent — `blackflashStreak` (série en cours) et
+  `blackflashRecord` (meilleure série jamais atteinte, d’où se déduit le titre).
+- La **série en cours** s’incrémente à chaque succès, retombe à zéro à chaque échec, et
+  `/jjk blackflash-reset` (fin de combat) la remet également à zéro. Un recordman qui bat
+  **son propre** record met simplement à jour sa fiche, sans nouvel embed : le titre est
+  déjà acquis.
+
+#### Tester l’évènement (staff)
+
+Le Black Flash est un tirage : à 5 % de base, enchaîner 4 réussites ne peut pas se
+vérifier « à la main ». Deux commandes réservées au staff existent donc uniquement
+pour ça — elles écrivent dans la **fiche** du joueur, avec les mêmes champs que le
+jeu normal :
+
+| Commande | Effet |
+|---|---|
+| `/blackflash chance joueur: [valeur] [retirer]` | Force la chance du prochain tirage (`100` = chaque tentative réussit), ou la rend |
+| `/blackflash record joueur: [retirer]` | Montre le record personnel et le statut de recordman, ou retire le titre |
+| `/blackflash buff joueur: [tours] [retirer]` | Montre, fixe les tours restants du buff de stats, ou le retire |
+
+- `valeur` s’écrit dans `blackflashChance`, la chance **courante** : à `100`, enchaîne 4
+  `/jjk blackflash` pour déclencher le titre de recordman sans rien espérer du hasard.
+- `retirer` (sur `chance`) rend la **base effective** de la fiche — traits, exception du
+  staff et bonus de recordman compris — soit exactement ce que fait `/jjk blackflash-reset`.
+- `retirer` (sur `record`) remet à zéro le record personnel **et** la série en cours : le
+  titre et son bonus disparaissent, l’évènement peut être rejoué depuis le début.
+- Rien de spécifique aux tests n’est stocké : une fiche forcée reste une fiche normale, et
+  un joueur garde ce que le test lui a donné jusqu’à ce qu’on le lui retire.
+
+### Entraînement
+
+| Commande | Effet |
+|---|---|
+| `/train` | S’entraîner : **+500 XP**, une fois par semaine |
+| `/train-reset joueur:` | Rend son entraînement à un joueur *(staff)* |
+
+- La semaine se calcule en **7 jours glissants** depuis le dernier `/train` : un
+  joueur qui s’entraîne un mardi peut recommencer le mardi suivant, pas avant.
+  Tant que le délai court, `/train` répond quand la séance revient.
+- Le rendez-vous vit sur la fiche (`trainLastAt`). `/train-reset` l’efface, ce qui
+  rend la séance immédiatement — utile pour un rattrapage, un test ou une date
+  erronée.
+- Le résultat est encadré par la bannière, avec l’image locale `assets/train.png`
+  (repli `TRAIN_URL`).
+
 ### Renaissance en Esprit Vengeur
 
 | Commande | Effet |
@@ -322,6 +406,9 @@ relèvent. La correspondance vit dans [config/blackflash.json](config/blackflash
 | `/jjk help` | Guide de démarrage illustré (GIF optionnel) |
 | `/jjk emojis` | Diagnostic des emojis du serveur *(staff)* |
 | `/jjk blackflash-chance` | Plancher et bonus de Black Flash d’un joueur *(staff)* |
+| `/blackflash chance` et `/blackflash record` | Forcer la chance de Black Flash et gérer le titre de recordman, pour tester l’évènement *(staff)* |
+| `/blackflash buff` | Voir, fixer ou retirer le buff de stats du Black Flash d’un joueur *(staff)* |
+| `/train-reset` | Rendre son entraînement hebdomadaire à un joueur *(staff)* |
 | `/jjk renaissance` | Tente la Renaissance en Esprit Vengeur, à la mort définitive du personnage |
 | `/jjk eo` | Réserve d’EO d’un joueur, après validation de sa fiche *(administrateurs)* |
 | `/jjk salon` | Salon du staff qui reçoit les demandes d’XP *(administrateurs)* |
@@ -330,9 +417,10 @@ relèvent. La correspondance vit dans [config/blackflash.json](config/blackflash
 
 ## Données
 
-> ⚠️ **Les données ne sont pas dans Git.** `.gitignore` exclut `data/profiles.json` et
-> `data/images/` : un déploiement par **clone Git recrée le dossier à vide**, et toutes
-> les fiches perdues — sauf celles recréées après la mise à jour. Sur un hébergeur qui
+> ⚠️ **Les données ne sont pas dans Git.** `.gitignore` exclut tout `data/*.json`
+> (`profiles.json`, `settings.json`, `xp_requests.json`) et `data/images/` : un
+> déploiement par **clone Git recrée le dossier à vide**, et toutes les fiches
+> perdues — sauf celles recréées après la mise à jour. Sur un hébergeur qui
 > remplace le dossier à chaque déploiement, pose donc `DATA_DIR` sur un chemin
 > **persistant, hors du dépôt cloné** (voir ci-dessous).
 
@@ -393,17 +481,19 @@ config/emojis.json            catalogue des emojis du serveur
 config/blackflash.json        traits/évènements qui relèvent la chance de Black Flash
 assets/banniere_jjk.png       bannière locale, jointe en tête et en pied des réponses
 assets/blackflash_*.png       Images locales du Black Flash (succès / échec)
+assets/record_rayon_noir.png  Image locale de l’évènement Record Man du Rayon Noir
 assets/renaissance_*.png      Images locales de la Renaissance (succès / échec)
+assets/train.png              Image locale de l’entraînement (/train)
 jjkbot/
   config.py                   lecture du .env
   theme.py                    palettes et mise en forme des embeds
   emojis.py                   résolution emoji custom / repli unicode
   permissions.py              contrôle d’accès staff et administrateurs
   sessions.py                 états d’attente des parcours multi-étapes
-  content/                    statistiques, couleurs, arbre de compétences, Black Flash, Renaissance et types d’interaction
+  content/                    statistiques (et sous-stats), couleurs, arbre de compétences, Black Flash, Renaissance, entraînement et types d’interaction
   storage/                    fiches (profiles.py), images (images.py), demandes d’XP (requests.py) et réglages (settings.py)
-  views/                      embeds et vues interactives (profil, compétences, blackflash, renaissance, demandes d’XP)
-  cogs/                       commandes /profil, /competences, /jjk et /xp
+  views/                      embeds et vues interactives (profil, compétences, blackflash, renaissance, train, demandes d’XP)
+  cogs/                       commandes /profil, /competences, /jjk, /xp, /blackflash et /train (outils staff)
 tests/                        tests unitaires (bibliothèque standard uniquement)
 tools/preview.py              aperçu local des embeds (tools/preview.html)
 tools/preview_blackflash.py   aperçu local du Black Flash (tools/blackflash.html)

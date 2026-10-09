@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from jjkbot import config
-from jjkbot.content.blackflash import BASE_CHANCE, MAX_CHANCE
+from jjkbot.content.blackflash import BASE_CHANCE, MAX_BUFF_TURNS, MAX_CHANCE
 from jjkbot.content.stats import DEFAULT_STATS
 
 logger = logging.getLogger(__name__)
@@ -147,11 +147,24 @@ class Profile:
     experience: int = 0
     # Chance actuelle de Black Flash, en pourcentage (5 % de base, 100 % max).
     blackflash_chance: int = BASE_CHANCE
+    # Succès de Black Flash **consécutifs** depuis le dernier échec (ou le
+    # dernier `/jjk blackflash-reset`, qui marque la fin du combat).
+    blackflash_streak: int = 0
+    # Meilleure série jamais réalisée par ce joueur. Dès qu’elle atteint
+    # `RECORD_STREAK`, le joueur est « recordman du Rayon Noir » : son buff est
+    # **personnel et définitif** (rien à stocker de plus, il se déduit d’ici).
+    blackflash_record: int = 0
     # Exception du staff : plancher imposé (`None` = seuls les traits comptent) et
     # bonus additif. Sert aux évènements ou à corriger une fiche sans attendre
     # que le joueur modifie ses traits (voir `blackflash.effective_base`).
     blackflash_base: int | None = None
     blackflash_bonus: int = 0
+    # Tours restants du buff de Noirceur d’un Black Flash réussi (+10 % à toutes
+    # les statistiques attribuables, Réserve d’EO exceptée). 0 = aucun buff.
+    blackflash_buff_turns: int = 0
+    # Dernier `/train` du joueur (ISO). Le suivant n’est possible que 7 jours
+    # plus tard — voir `content.train`.
+    train_last_at: str | None = None
     # Couleur d’embed choisie par le joueur pour sa propre fiche (voir
     # `/profil couleur`). `None` = couleur du thème actif.
     embed_color: int | None = None
@@ -184,12 +197,20 @@ class Profile:
             stat_points=_as_int(data.get("statPoints")),
             experience=_as_int(data.get("experience")),
             blackflash_chance=min(MAX_CHANCE, _as_int(data.get("blackflashChance"), BASE_CHANCE)),
+            blackflash_streak=min(MAX_CHANCE, _as_int(data.get("blackflashStreak"))),
+            blackflash_record=min(MAX_CHANCE, _as_int(data.get("blackflashRecord"))),
             blackflash_base=(
                 None
                 if data.get("blackflashBase") is None
                 else min(MAX_CHANCE, _as_int(data.get("blackflashBase")))
             ),
             blackflash_bonus=min(MAX_CHANCE, _as_int(data.get("blackflashBonus"))),
+            blackflash_buff_turns=min(MAX_BUFF_TURNS, _as_int(data.get("blackflashBuffTurns"))),
+            train_last_at=(
+                data.get("trainLastAt")
+                if isinstance(data.get("trainLastAt"), str) and data.get("trainLastAt").strip()
+                else None
+            ),
             embed_color=_as_color(data.get("embedColor")),
             unlocked_skills=[str(skill) for skill in data.get("unlockedSkills") or []]
             if isinstance(data.get("unlockedSkills"), list)
@@ -216,8 +237,12 @@ class Profile:
             "statPoints": self.stat_points,
             "experience": self.experience,
             "blackflashChance": self.blackflash_chance,
+            "blackflashStreak": self.blackflash_streak,
+            "blackflashRecord": self.blackflash_record,
             "blackflashBase": self.blackflash_base,
             "blackflashBonus": self.blackflash_bonus,
+            "blackflashBuffTurns": self.blackflash_buff_turns,
+            "trainLastAt": self.train_last_at,
             "embedColor": self.embed_color,
             "unlockedSkills": list(self.unlocked_skills),
             "imageName": self.image_name,

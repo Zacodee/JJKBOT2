@@ -127,9 +127,19 @@ BLACKFLASH_KO_PATH: Path = ASSETS_DIR / "blackflash_ko.png"
 BLACKFLASH_OK_URL: str | None = _optional("BLACKFLASH_OK_URL")
 BLACKFLASH_KO_URL: str | None = _optional("BLACKFLASH_KO_URL")
 
+# Image de l’évènement « Record Man du Rayon Noir », même règle que les autres :
+# fichier local joint (`attachment://`), URL de repli seulement s’il est absent.
+BLACKFLASH_RECORD_PATH: Path = ASSETS_DIR / "record_rayon_noir.png"
+BLACKFLASH_RECORD_URL: str | None = _optional("BLACKFLASH_RECORD_URL")
+
 # Images de la Renaissance en Esprit Vengeur, mêmes règles que le Black Flash :
 # le fichier local est joint via `attachment://`, l’URL ne sert que de repli.
 RENAISSANCE_OK_PATH: Path = ASSETS_DIR / "renaissance_ok.png"
 RENAISSANCE_KO_PATH: Path = ASSETS_DIR / "renaissance_ko.png"
 RENAISSANCE_OK_URL: str | None = _optional("RENAISSANCE_OK_URL")
 RENAISSANCE_KO_URL: str | None = _optional("RENAISSANCE_KO_URL")
+
+# Image de `/train`, même règle que les autres évènements : fichier local joint
+# via `attachment://` (il n’expire jamais), URL de repli seulement s’il manque.
+TRAIN_PATH: Path = ASSETS_DIR / "train.png"
+TRAIN_URL: str | None = _optional("TRAIN_URL")

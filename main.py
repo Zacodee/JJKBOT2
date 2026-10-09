@@ -22,6 +22,8 @@ logger = logging.getLogger("jjkbot")
 
 EXTENSIONS: tuple[str, ...] = (
     "jjkbot.cogs.jjk",
+    "jjkbot.cogs.blackflash",
+    "jjkbot.cogs.train",
     "jjkbot.cogs.profil",
     "jjkbot.cogs.competences",
     "jjkbot.cogs.xp",

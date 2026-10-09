@@ -141,7 +141,9 @@ class RenaissanceEmbedTests(unittest.TestCase):
         self.assertIn("Renaissance en Esprit Vengeur", embed.title)
         self.assertNotIn("<:", embed.title)
         self.assertIn("Esprit Vengeur", embed.description)
-        self.assertIn("**Réussit**", embed.description)
+        # Embed d’évènement : le texte est écrit en gras.
+        self.assertIn(f"**{rules.SUCCESS_TEXT}**", embed.description)
+        self.assertIn("**🕯️ Tentative de renaissance : Réussit**", embed.description)
         self.assertIn("`4` ≤ seuil `5`", embed.description)
         self.assertIn("Mort sans circonstance particulière", embed.description)
         self.assertEqual(embed.colour.value, theme.color(theme.SECTION_RENAISSANCE))
@@ -157,7 +159,8 @@ class RenaissanceEmbedTests(unittest.TestCase):
 
         self.assertIn("Pas de renaissance", embed.title)
         self.assertIn("se dissiper", embed.description)
-        self.assertIn("**Échoué**", embed.description)
+        self.assertIn(f"**{rules.FAIL_TEXT}**", embed.description)
+        self.assertIn("**🕯️ Tentative de renaissance : Échoué**", embed.description)
         self.assertIn("`72` > seuil `5`", embed.description)
         self.assertEqual(embed.colour.value, theme.color(theme.SECTION_NEUTRE))
         self.assertEqual(embed.image.url, "attachment://renaissance_ko.png")

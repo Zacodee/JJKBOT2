@@ -194,6 +194,44 @@ class ProfileEmbedTests(unittest.TestCase):
         # La Réserve n’écrase ni le total ni les autres barres (10, et non 110).
         self.assertIn("Total réparti — **10**", embed.description)
 
+    def test_buff_de_blackflash_affiche_dans_les_stats(self):
+        profile = make_profile(stats={**DEFAULT_STATS, "force": 10, "vitesse": 5})
+        profile.blackflash_buff_turns = 3
+
+        embed = profil_views.build_profile_embeds(profile, FakeUser(), "stats", None)[0]
+
+        self.assertIn("Rayon Noir", embed.description)
+        self.assertIn("**(+1)**", embed.description)
+        self.assertIn("`11`", embed.description)
+        self.assertIn("3** tour(s)", embed.description)
+        # Le « Total réparti » reste le total des points dépensés (base).
+        self.assertIn("Total réparti — **15**", embed.description)
+
+    def test_sans_buff_les_stats_restent_normales(self):
+        profile = make_profile(stats={**DEFAULT_STATS, "force": 10})
+
+        embed = profil_views.build_profile_embeds(profile, FakeUser(), "stats", None)[0]
+
+        self.assertNotIn("Rayon Noir", embed.description)
+        self.assertNotIn("**(+", embed.description)
+        self.assertIn("Total réparti — **10**", embed.description)
+
+    def test_sous_statistiques_affichees(self):
+        profile = make_profile(stats={**DEFAULT_STATS, "vitesse": 7, "manipulationEO": 4})
+
+        embed = profil_views.build_profile_embeds(profile, FakeUser(), "stats", None)[0]
+
+        self.assertIn("Sous-statistiques", embed.description)
+        for label in ("Perception", "Vitesse de Projectile", "Perception Occulte"):
+            self.assertIn(label, embed.description)
+        # La sous-statistique vaut sa statistique principale (Vitesse = 7)…
+        self.assertIn("**Perception :** `7`", embed.description)
+        self.assertIn("**Perception Occulte :** `4`", embed.description)
+        # …mais aucune définition n’est affichée : le staff guide le joueur en RP.
+        self.assertNotIn("vitesse de réaction", embed.description)
+        self.assertNotIn("résidus d’énergie occulte", embed.description)
+        self.assertNotIn("égale à", embed.description)
+
     def test_page_statistiques_utilise_les_emojis_du_serveur(self):
         # Le bug corrigé : sur le serveur, l’emoji custom remplace le repli
         # (jjk_force pour Force, jjk_vitesse pour Vitesse).

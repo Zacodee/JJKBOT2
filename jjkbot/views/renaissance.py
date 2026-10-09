@@ -41,25 +41,32 @@ def build_renaissance_embed(
     verdict = "Réussit" if success else "Échoué"
     comparison = f"`{die}` ≤ seuil `{threshold}`" if success else f"`{die}` > seuil `{threshold}`"
 
+    # Embed d’évènement : le texte est écrit en **gras** (voir `theme.bold`).
     if success:
         # Titre : repli unicode, car le champ `title` ne rend pas les emojis custom.
         title = f"{theme.fallback('renaissance')} Renaissance en Esprit Vengeur"
         description = theme.blocks(
-            rules.SUCCESS_TEXT,
+            theme.bold(rules.SUCCESS_TEXT),
             theme.code_block([situation_text(situation)]),
-            f"{theme.emoji('renaissance_tentative', guild)} Tentative de renaissance : **{verdict}**",
-            f"{theme.emoji('renaissance_chance', guild)} Dé : {comparison}",
-            f"{theme.emoji('alerte', guild)} *L’existence, le potentiel et les capacités "
-            "de ton personnage sont redéfinis avec le staff.*",
+            theme.bold(
+                f"{theme.emoji('renaissance_tentative', guild)} Tentative de renaissance : {verdict}"
+            ),
+            theme.bold(f"{theme.emoji('renaissance_chance', guild)} Dé : {comparison}"),
+            theme.bold(
+                f"{theme.emoji('alerte', guild)} L’existence, le potentiel et les capacités "
+                "de ton personnage sont redéfinis avec le staff."
+            ),
         )
         embed = discord.Embed(colour=theme.color(theme.SECTION_RENAISSANCE), title=title)
     else:
         title = f"{theme.fallback('renaissance_rate')} Pas de renaissance"
         description = theme.blocks(
-            rules.FAIL_TEXT,
+            theme.bold(rules.FAIL_TEXT),
             theme.code_block([situation_text(situation)]),
-            f"{theme.emoji('renaissance_tentative', guild)} Tentative de renaissance : **{verdict}**",
-            f"{theme.emoji('renaissance_chance', guild)} Dé : {comparison}",
+            theme.bold(
+                f"{theme.emoji('renaissance_tentative', guild)} Tentative de renaissance : {verdict}"
+            ),
+            theme.bold(f"{theme.emoji('renaissance_chance', guild)} Dé : {comparison}"),
         )
         embed = discord.Embed(colour=theme.color(theme.SECTION_NEUTRE), title=title)
 

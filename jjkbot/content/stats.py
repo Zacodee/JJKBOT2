@@ -62,3 +62,50 @@ FIXED_STATS: tuple[StatDefinition, ...] = tuple(stat for stat in STAT_DEFINITION
 def get_stat(stat_id: str) -> StatDefinition | None:
     """Renvoie la statistique correspondante, ou None si elle n’existe pas."""
     return STATS_BY_ID.get(stat_id)
+
+
+@dataclass(frozen=True)
+class SubStatDefinition:
+    """Sous-statistique dérivée d’une statistique principale.
+
+    Une sous-statistique **ne s’achète pas** : elle n’accepte aucun point. Elle
+    suit sa statistique principale (`source`) et vaut exactement la même valeur.
+    Monter la Force, la Vitesse ou la Manipulation occulte avec des points fait
+    donc grandir les sous-statistiques correspondantes, sans action directe
+    possible sur elles (décision produit : « elles scalent avec les autres
+    stats »).
+
+    Aucune description n’est affichée dans la fiche : les effets exacts d’une
+    sous-statistique se découvrent en RP, guidés par le staff.
+    """
+
+    id: str
+    label: str
+    emoji: str
+    source: str
+
+
+SUBSTAT_DEFINITIONS: tuple[SubStatDefinition, ...] = (
+    SubStatDefinition(id="perception", label="Perception", emoji="perception", source="vitesse"),
+    SubStatDefinition(
+        id="projectile",
+        label="Vitesse de Projectile",
+        emoji="projectile",
+        source="vitesse",
+    ),
+    SubStatDefinition(
+        id="perceptionOcculte",
+        label="Perception Occulte",
+        emoji="perception_occulte",
+        source="manipulationEO",
+    ),
+)
+
+SUBSTATS_BY_ID: dict[str, SubStatDefinition] = {substat.id: substat for substat in SUBSTAT_DEFINITIONS}
+
+
+def substat_value(substat: SubStatDefinition, stats: dict[str, int]) -> int:
+    """Valeur d’une sous-statistique : celle de sa statistique principale."""
+    if not isinstance(stats, dict):
+        return 0
+    return int(stats.get(substat.source, 0))

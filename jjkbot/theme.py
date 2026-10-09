@@ -242,6 +242,15 @@ def section(key: str, text: str, guild=None) -> str:
     return f"{emoji(key, guild)} **{text}**"
 
 
+def bold(text) -> str:
+    """Texte en gras (`**…**`).
+
+    Les embeds d’**évènement** (Black Flash, Renaissance) écrivent leur texte en
+    gras ; les fiches de personnage, elles, gardent leur mise en forme habituelle.
+    """
+    return f"**{str(text).strip()}**"
+
+
 def heading(text: str, level: int = 2, guild=None, key: str | None = None) -> str:
     """Titre Markdown (`##`, `###`).
 
@@ -372,15 +381,18 @@ def banner_embed(
     return None
 
 
-def with_banner(
-    content_embed: discord.Embed,
+def with_banner_many(
+    content_embeds: list[discord.Embed],
     files: list[discord.File] | None = None,
 ) -> list[discord.Embed]:
-    """Embeds d’une réponse : bannière, contenu, bannière (début et fin).
+    """Embeds d’une réponse : bannière, contenu(s), bannière (début et fin).
 
-    La bannière encadre le message comme dans le visuel d’origine. Passer
-    `files` permet de joindre l’image locale au message ; sans elle, seule
-    une bannière par `BANNER_URL` (sans fichier) peut s’afficher.
+    Un même message peut porter **plusieurs** embeds de contenu — le Black Flash
+    en envoie deux quand la tentative décroche le titre de recordman (voir
+    `views.blackflash`). Les deux bandeaux encadrent alors l’ensemble, comme
+    dans le visuel d’origine. Passer `files` permet de joindre l’image locale
+    au message ; sans elle, seule une bannière par `BANNER_URL` (sans fichier)
+    peut s’afficher.
 
     Chaque bannière a sa propre attachment (`banniere_jjk.png` et
     `banniere_jjk_fin.png`) : un même fichier référencé par deux embeds
@@ -388,9 +400,17 @@ def with_banner(
     """
     top = banner_embed(files, part="debut")
     if top is None:
-        return [content_embed]
+        return list(content_embeds)
     bottom = banner_embed(files, part="fin") or top
-    return [top, content_embed, bottom]
+    return [top, *content_embeds, bottom]
+
+
+def with_banner(
+    content_embed: discord.Embed,
+    files: list[discord.File] | None = None,
+) -> list[discord.Embed]:
+    """Embeds d’une réponse à un seul contenu : bannière, contenu, bannière."""
+    return with_banner_many([content_embed], files)
 
 
 # --- Images de résultat (Black Flash, Renaissance) ---------------------------
@@ -458,6 +478,18 @@ def blackflash_image(
     )
 
 
+def blackflash_record_image(
+    files: list[discord.File] | None = None,
+) -> str | None:
+    """URL d’image de l’évènement « Record Man du Rayon Noir » (locale, sinon repli)."""
+    return _result_image(
+        Path(config.BLACKFLASH_RECORD_PATH),
+        config.BLACKFLASH_RECORD_URL,
+        files,
+        "du Record Man du Rayon Noir",
+    )
+
+
 def renaissance_image(
     success: bool,
     files: list[discord.File] | None = None,
@@ -468,6 +500,16 @@ def renaissance_image(
         config.RENAISSANCE_OK_URL if success else config.RENAISSANCE_KO_URL,
         files,
         "de Renaissance",
+    )
+
+
+def train_image(files: list[discord.File] | None = None) -> str | None:
+    """URL d’image du `/train` (image locale, sinon URL de repli)."""
+    return _result_image(
+        Path(config.TRAIN_PATH),
+        config.TRAIN_URL,
+        files,
+        "d’entraînement",
     )
 
 
