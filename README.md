@@ -555,11 +555,12 @@ base est donc vide. Conserve une copie de `data/profiles.json` et de `data/image
 et remets-les après le clone (ou définis `DATA_DIR` vers un dossier persistant).
 `/jjk sauvegarde` te donne cette copie en un clic, `/jjk restaurer` la remet.
 
-> 💡 **Dépôt Git lourd ?** L’historique peut conserver d’anciens gros fichiers
-> (images supprimées, `__pycache__` autrefois suivis) et rendre le clone Wispbyte
-> lent, même si le dépôt actuel est léger. Dans ce cas, purger l’historique avec
+> 💡 **Dépôt Git lourd ?** L’historique conserve d’anciens gros fichiers (un
+> `blackflash_ok.gif` de 14 Mo, des `__pycache__` autrefois suivis) : le pack pèse
+> ≈ 21 Mo alors que les fichiers utiles en font ≈ 2, et c’est ce pack que le
+> `git pull` de chaque redémarrage relit. Purger l’historique avec
 > `git filter-branch` (ou repartir d’un dépôt neuf à partir de cette archive)
-> ramène le clone à quelques mégaoctets.
+> ramène le clone à quelques mégaoctets — voir « Démarrage lent » plus bas.
 
 ### Ce qui ne doit JAMAIS être dans le dépôt
 
@@ -581,7 +582,10 @@ Le `.gitignore` du projet exclut déjà tout cela.
 | Commande de démarrage | `python main.py` |
 
 Ne mets **jamais** `--sync` dans la commande de démarrage : le bot s’arrêterait aussitôt.
-La synchronisation des commandes se fait toute seule à chaque démarrage.
+La synchronisation des commandes se fait toute seule à chaque démarrage, **en arrière-plan** :
+elle n’attend plus d’être terminée pour connecter le bot, donc un enregistrement lent (ou freiné
+par Discord) ne retarde plus son apparition en ligne. `--sync` continue, lui, d’attendre
+l’enregistrement avant de quitter — c’est tout son intérêt.
 
 Les variables d’environnement (`DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `THEME`, `BANNER_URL`…) se
 renseignent dans le panneau de l’hébergeur. Créer un fichier `.env` à la main fonctionne aussi :
@@ -604,6 +608,65 @@ process n’a reçu aucun token — ni le clone git ni l’installation des dép
 
 Après un redéploiement qui reclone tout le dossier, vérifie que le `.env` est toujours là —
 garde une copie quelque part. Le démarrage doit rester `python main.py` : **jamais** `--sync`.
+
+#### Démarrage lent (plusieurs minutes) : `git pull` et `pip install` à chaque boot
+
+La commande de démarrage fournie par l’œuf Pterodactyl ne lance **pas** le bot tout de suite.
+Sur Wispbyte elle ressemble à ceci :
+
+```bash
+if [[ -d .git ]] && [[ "1" == "1" ]]; then git pull; fi;
+if [[ ! -z "" ]]; then pip install -U --prefix .local ; fi;
+if [[ -f /home/container/${REQUIREMENTS_FILE} ]]; then pip install -U --prefix .local -r ${REQUIREMENTS_FILE}; fi;
+/usr/local/bin/python /home/container/main.py
+```
+
+Deux étapes s’exécutent donc **à chaque redémarrage**, avant même que le bot démarre :
+
+1. `git pull` — le pack du dépôt pèse ici **21,2 Mo pour 2,6 Mo de fichiers utiles** :
+il contient un ancien `assets/blackflash_ok.gif` de **14 Mo** (plus suivi aujourd’hui,
+mais toujours dans le pack) et un `blackflash_ko.gif` de 1,7 Mo ;
+2. `pip install -U --prefix .local -r requirements.txt` — le `-U` force pip à interroger PyPI
+et à réinstaller `discord.py`, `aiohttp`, `multidict`, `yarl`, `frozenlist`… soit une dizaine
+de paquets **à chaque démarrage**, même quand rien n’a changé.
+
+Ce n’est donc pas le code du bot : mesuré hors ligne, imports compris, **le bot démarre en
+moins d’une seconde**.
+
+**Commande de démarrage allégée** (onglet **« Startup »** → champ **« Startup Command »**) :
+le `pip install` ne se relance que si `requirements.txt` a réellement changé, et le `git pull`
+ne peut plus bloquer indéfiniment :
+
+```bash
+if [[ -d .git ]] && [[ "1" == "1" ]]; then timeout 90 git pull --ff-only; fi;
+if [[ ! -z "" ]]; then pip install -U --prefix .local ; fi;
+if [[ -f /home/container/${REQUIREMENTS_FILE} ]]; then H=$(sha1sum /home/container/${REQUIREMENTS_FILE} | cut -c1-12); if [[ "$H" != "$(cat /home/container/.deps.hash 2>/dev/null)" ]]; then pip install --prefix .local -r ${REQUIREMENTS_FILE} && echo "$H" > /home/container/.deps.hash; fi; fi;
+exec /usr/local/bin/python -u /home/container/main.py
+```
+
+`-u` rend les logs immédiats dans le panneau (sans lui, la sortie standard reste bufferisée).
+Le premier démarrage après ce changement réinstalle les dépendances une dernière fois, puis
+les suivants sautent complètement l’étape. Pour aller plus loin, purger l’historique
+(`git filter-branch`, ou repartir du dépôt nettoyé) ramène le pack à quelques mégaoctets.
+
+**Où regarder ensuite.** Le bot écrit lui-même des jalons horodatés :
+
+```
+20:00:00 | INFO | jjkbot | Démarrage : modules importés en 0.43 s.
+20:00:00 | INFO | jjkbot | Démarrage : extensions chargées en 0.44 s.
+20:00:00 | INFO | jjkbot | Démarrage : fiches prêtes en 0.45 s.
+20:00:00 | INFO | jjkbot | Connexion à Discord (tentative n°1)…
+20:00:01 | INFO | jjkbot | Bot connecté : … • 1 serveur(s) • thème « violet »
+20:00:01 | INFO | jjkbot | Démarrage : bot en ligne 1.02 s après le lancement du process.
+20:00:05 | INFO | jjkbot | Démarrage : commandes synchronisées en 5.45 s.
+```
+
+- long silence **avant** « modules importés » → l’attente est dans `git pull` / `pip install`,
+  pas dans le bot ;
+- long silence **après** « Connexion à Discord » → c’est le réseau Discord (429 / Cloudflare
+  1015, section suivante) ;
+- « bot en ligne » atteint alors que « commandes synchronisées » arrive plus tard est
+  **normal** : l’enregistrement des commandes se fait en arrière-plan.
 
 #### `429 Too Many Requests` / Cloudflare « Error 1015 » au démarrage
 

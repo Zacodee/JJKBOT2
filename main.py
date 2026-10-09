@@ -2,12 +2,23 @@
 
     python main.py           # démarre le bot et synchronise les commandes
     python main.py --sync    # synchronise les commandes puis quitte
+
+Le démarrage est jalonné de messages « Démarrage : … » portant le temps écoulé
+depuis le lancement du process. Sur un hébergeur qui fait un `git pull` et un
+`pip install` avant de lancer ce fichier, c’est ce qui permet de dire si
+l’attente vient des dépendances, du réseau Discord ou du bot lui-même.
 """
 
 import argparse
 import asyncio
 import logging
 import time
+
+# Repère posé AVANT `import discord` : discord.py tire aiohttp, multidict et
+# compagnie, soit la plus grosse part du coût d’import d’un bot Discord. Le
+# placer ici, et non avec les autres imports, est volontaire — c’est la seule
+# façon de mesurer ce que le bot lui-même ajoute au démarrage.
+_START = time.perf_counter()
 
 import discord
 from discord import app_commands
@@ -53,6 +64,11 @@ RATE_LIMIT_EXPLANATION = (
 )
 
 
+def _elapsed() -> float:
+    """Secondes écoulées depuis le lancement du process."""
+    return time.perf_counter() - _START
+
+
 def _is_rate_limited(error: BaseException) -> bool:
     """Vrai si l’erreur est un refus temporaire de Discord (429 / Cloudflare 1015).
 
@@ -88,6 +104,7 @@ class JJKBot(commands.Bot):
         )
         self.sync_only = sync_only
         self._sweeper: asyncio.Task | None = None
+        self._sync_task: asyncio.Task | None = None
 
     # --- Cycle de vie ----------------------------------------------------
 
@@ -95,6 +112,7 @@ class JJKBot(commands.Bot):
         for extension in EXTENSIONS:
             await self.load_extension(extension)
             logger.debug("Extension chargée : %s", extension)
+        logger.info("Démarrage : extensions chargées en %.2f s.", _elapsed())
 
         # Vue persistante : les boutons « Approuver / Décliner » d’une demande
         # d’XP doivent répondre même après un redémarrage. Sans cet
@@ -104,7 +122,16 @@ class JJKBot(commands.Bot):
         self.add_view(xp_request_views.XPDecisionView())
 
         self.tree.on_error = self.on_tree_error
-        await self.sync_commands()
+
+        # `--sync` : la synchronisation est le but même du lancement, on l’attend
+        # donc, sinon le bot s’arrêterait avant de l’avoir enregistrée. En
+        # fonctionnement normal elle part en tâche de fond (voir
+        # `_sync_in_background`) : la connexion à Discord n’attend plus un
+        # aller-retour HTTP, et le bot apparaît en ligne tout de suite.
+        if self.sync_only:
+            await self.sync_commands()
+        else:
+            self._sync_task = asyncio.create_task(self._sync_in_background())
 
         # Préchauffe les fiches en mémoire : la première commande n’attend pas
         # la lecture du fichier de données (disque parfois lent en conteneur).
@@ -119,7 +146,27 @@ class JJKBot(commands.Bot):
                 exc_info=True,
             )
 
+        logger.info("Démarrage : fiches prêtes en %.2f s.", _elapsed())
         self._sweeper = asyncio.create_task(self._sweeper_loop())
+
+    async def _sync_in_background(self) -> None:
+        """Enregistre les commandes sans retenir la connexion à Discord.
+
+        `sync_commands` était attendu dans `setup_hook`, donc AVANT la connexion
+        à la passerelle. Or l’enregistrement des commandes est un appel réseau
+        que Discord limite durement (endpoint dédié, IP d’hébergeur partagée) :
+        quand il traînait, le bot restait absent — parfois plusieurs minutes —
+        sans qu’aucune ligne de log n’explique l’attente, puisqu’aucune erreur
+        n’était levée. Ici le bot se connecte d’abord ; les commandes se mettent
+        à jour en arrière-plan.
+        """
+        try:
+            await self.sync_commands()
+            logger.info("Démarrage : commandes synchronisées en %.2f s.", _elapsed())
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # pragma: no cover - filet de sécurité
+            logger.exception("Synchronisation des commandes interrompue par une erreur inattendue.")
 
     async def _log_database_state(self) -> None:
         """Annonce d’où viennent les fiches et combien il y en a.
@@ -138,6 +185,9 @@ class JJKBot(commands.Bot):
             )
 
     async def close(self) -> None:
+        if self._sync_task is not None:
+            self._sync_task.cancel()
+            self._sync_task = None
         if self._sweeper is not None:
             self._sweeper.cancel()
             self._sweeper = None
@@ -156,6 +206,7 @@ class JJKBot(commands.Bot):
             len(self.guilds),
             config.THEME,
         )
+        logger.info("Démarrage : bot en ligne %.2f s après le lancement du process.", _elapsed())
 
         # Repère de déploiement : si « intent actif=False », l’ancien code tourne.
         logger.info(
@@ -241,6 +292,7 @@ def _run_with_retry(*, sync_only: bool) -> None:
     attempt = 0
     while True:
         bot = JJKBot(sync_only=sync_only)
+        logger.info("Connexion à Discord (tentative n°%d)…", attempt + 1)
         try:
             bot.run(config.token(), log_handler=None)
             return
@@ -280,6 +332,8 @@ def main() -> None:
         format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
         datefmt="%H:%M:%S",
     )
+
+    logger.info("Démarrage : modules importés en %.2f s.", _elapsed())
 
     try:
         config.check_required()
